@@ -1,5 +1,7 @@
 from datetime import datetime
+import numpy as np
 import pandas as pd
+from tiled.client import from_profile
 
 
 EPICS_EPOCH = datetime(1990, 1, 1, 0, 0)
@@ -10,12 +12,8 @@ def convert_AD_timestamps(ts):
         "US/Eastern"
     )
 
-def export_user_fly_only(h, fpath=None):
-    if fpath is None:
-        fpath = "./"
-    else:
-        if not fpath[-1] == "/":
-            fpath += "/"
+def export_user_fly_only(h):
+    db = from_profile('fxi')
     uid = h.start["uid"]
     note = h.start["note"]
     scan_type = h.start["plan_name"]
@@ -94,32 +92,4 @@ def export_user_fly_only(h, fpath=None):
 
     pos2 = mot_pos_interp.argmax() + 1
     img_tomo = imgs[: pos2 - chunk_size]  # tomo images
-
-    fname = fpath + "fly_scan_id_" + str(scan_id) + ".h5"
-
-    with h5py.File(fname, "w") as hf:
-        hf.create_dataset("note", data=str(note))
-        hf.create_dataset("uid", data=uid)
-        hf.create_dataset("scan_id", data=int(scan_id))
-        hf.create_dataset("scan_time", data=scan_time)
-        hf.create_dataset("X_eng", data=x_eng)
-        hf.create_dataset("img_bkg", data=np.array(img_bkg, dtype=np.uint16))
-        hf.create_dataset("img_dark", data=np.array(img_dark, dtype=np.uint16))
-        hf.create_dataset("img_bkg_avg", data=np.array(img_bkg_avg, dtype=np.float32))
-        hf.create_dataset("img_dark_avg", data=np.array(img_dark_avg, dtype=np.float32))
-        hf.create_dataset("img_tomo", data=np.array(img_tomo, dtype=np.uint16))
-        hf.create_dataset("angle", data=img_angle)
-        hf.create_dataset("x_ini", data=x_pos)
-        hf.create_dataset("y_ini", data=y_pos)
-        hf.create_dataset("z_ini", data=z_pos)
-        hf.create_dataset("r_ini", data=r_pos)
-
-    try:
-        write_lakeshore_to_file(h, fname)
-    except:
-        print("fails to write lakeshore info into {fname}")
-
-    del img_tomo
-    del img_dark
-    del img_bkg
-    del imgs
+    return img_tomo
