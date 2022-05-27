@@ -1,4 +1,14 @@
 from datetime import datetime
+import pandas as pd
+
+
+EPICS_EPOCH = datetime(1990, 1, 1, 0, 0)
+
+
+def convert_AD_timestamps(ts):
+    return pd.to_datetime(ts, unit="s", origin=EPICS_EPOCH, utc=True).dt.tz_convert(
+        "US/Eastern"
+    )
 
 def export_user_fly_only(h, fpath=None):
     if fpath is None:
