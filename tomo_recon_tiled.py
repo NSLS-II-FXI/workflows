@@ -1,5 +1,6 @@
 import numpy as np
 import tomopy
+from scipy.interpolate import interp1d
 from tiled.client import from_profile
 
 
