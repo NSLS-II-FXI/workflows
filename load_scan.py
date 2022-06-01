@@ -14,22 +14,7 @@ def convert_AD_timestamps(ts):
 
 def export_user_fly_only(h):
     db = from_profile('fxi')
-    uid = h.start["uid"]
-    note = h.start["note"]
-    scan_type = h.start["plan_name"]
-    scan_id = h.start["scan_id"]
-    scan_time = h.start["time"]
-    dark_scan_id = h.start["plan_args"]["dark_scan_id"]
-    bkg_scan_id = h.start["plan_args"]["bkg_scan_id"]
-    x_pos = h.table("baseline")["zps_sx"][1]
-    y_pos = h.table("baseline")["zps_sy"][1]
-    z_pos = h.table("baseline")["zps_sz"][1]
-    r_pos = h.table("baseline")["zps_pi_r"][1]
 
-    try:
-        x_eng = h.start["XEng"]
-    except:
-        x_eng = h.start["x_ray_energy"]
     # sanity check: make sure we remembered the right stream name
     assert "zps_pi_r_monitor" in h.stream_names
     pos = h.table("zps_pi_r_monitor")
@@ -38,13 +23,6 @@ def export_user_fly_only(h):
     s1 = imgs.shape
     chunk_size = s1[1]
     imgs = imgs.reshape(-1, s1[2], s1[3])
-
-    # load darks and bkgs
-    img_dark = np.array(list(db[dark_scan_id].data("Andor_image")))[0]
-    img_bkg = np.array(list(db[bkg_scan_id].data("Andor_image")))[0]
-    s = img_dark.shape
-    img_dark_avg = np.mean(img_dark, axis=0).reshape(1, s[1], s[2])
-    img_bkg_avg = np.mean(img_bkg, axis=0).reshape(1, s[1], s[2])
 
     with db.reg.handler_context({"AD_HDF5": AreaDetectorHDF5TimestampHandler}):
         chunked_timestamps = list(h.data("Andor_image"))
