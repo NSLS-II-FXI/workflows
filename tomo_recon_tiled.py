@@ -1,7 +1,6 @@
 import numpy as np
 import tomopy
 from scipy.interpolate import interp1d
-from tiled.client import from_profile
 
 
 def find_nearest(data, value):
@@ -9,7 +8,7 @@ def find_nearest(data, value):
     return np.abs(data - value).argmin()
 
 def rotcen_test2(
-    uid,
+    data,
     start=None,
     stop=None,
     steps=None,
@@ -29,10 +28,7 @@ def rotcen_test2(
     dark_scale=1,
     filter_name='None',
 ):
-    import tomopy
-    c = from_profile('fxi')
-    data = c[uid]["img_tomo"][0]
-    s = [1, tmp.shape[0], tmp.shape[1]]
+    s = [1, data.shape[0], data.shape[1]]
 
     if not atten is None:
         ref_ang = atten[:, 0]
