@@ -12,7 +12,7 @@ def convert_AD_timestamps(ts):
         "US/Eastern"
     )
 
-def export_user_fly_only(h):
+def get_tomo_images(h):
     db = from_profile('fxi')
 
     # sanity check: make sure we remembered the right stream name
