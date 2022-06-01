@@ -15,7 +15,6 @@ def rotcen_test2(
     steps=None,
     sli=0,
     block_list=[],
-    return_flag=0,
     print_flag=1,
     bkg_level=0,
     txm_normed_flag=0,
@@ -29,8 +28,6 @@ def rotcen_test2(
     clim=[],
     dark_scale=1,
     filter_name='None',
-    plot_flag=1,
-    save_flag=1,
 ):
     import tomopy
     c = from_profile('fxi')
@@ -137,16 +134,8 @@ def rotcen_test2(
                 num_iter=n_iter,
                 filter_name=filter_name
                 )
-    if save_flag:
-        fout = "center_test.h5"
-        with h5py.File(fout, "w") as hf:
-            hf.create_dataset("img", data=img)
-            hf.create_dataset("rot_cen", data=cen)
     img = tomopy.circ_mask(img, axis=0, ratio=circ_mask_ratio)
-    if plot_flag:
-        tracker = image_scrubber(img, clim=clim)
-    if return_flag:
-        return img, cen
+    return img, cen
         
 
 def denoise(prj, denoise_flag):
