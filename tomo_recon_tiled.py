@@ -8,7 +8,10 @@ def find_nearest(data, value):
     return np.abs(data - value).argmin()
 
 def rotcen_test2(
-    data,
+    img_tomo,
+    img_bkg_avg,
+    img_dark_avg,
+    img_angle,
     start=None,
     stop=None,
     steps=None,
@@ -46,15 +49,15 @@ def rotcen_test2(
         np.max([0, sli - addition_slice // 2]),
         np.min([sli + addition_slice // 2 + 1, s[1]]),
     ]
-    tomo_angle = np.array(f["angle"]) 
+    tomo_angle = np.arrayimg_angle
     theta = tomo_angle / 180.0 * np.pi
-    img_tomo = np.array(f["img_tomo"][:, sli_exp[0] : sli_exp[1], :])
+    img_tomo = np.array(img_tomo[:, sli_exp[0] : sli_exp[1], :])
 
     if txm_normed_flag:
         prj_norm = img_tomo
     else:
-        img_bkg = np.array(f["img_bkg_avg"][:, sli_exp[0] : sli_exp[1], :])
-        img_dark = np.array(f["img_dark_avg"][:, sli_exp[0] : sli_exp[1], :]) / dark_scale
+        img_bkg = np.array(img_bkg_avg[:, sli_exp[0] : sli_exp[1], :])
+        img_dark = np.array(img_dark_avg[:, sli_exp[0] : sli_exp[1], :]) / dark_scale
         prj = (img_tomo - img_dark) / (img_bkg - img_dark)
         if not atten is None:
             for i in range(len(tomo_angle)):
