@@ -14,22 +14,9 @@ def convert_AD_timestamps(ts):
 
 def get_tomo_images(h):
     db = from_profile('fxi')
-    uid = h.start["uid"]
-    note = h.start["note"]
-    scan_type = h.start["plan_name"]
-    scan_id = h.start["scan_id"]
-    scan_time = h.start["time"]
     dark_scan_id = h.start["plan_args"]["dark_scan_id"]
     bkg_scan_id = h.start["plan_args"]["bkg_scan_id"]
-    x_pos = h.table("baseline")["zps_sx"][1]
-    y_pos = h.table("baseline")["zps_sy"][1]
-    z_pos = h.table("baseline")["zps_sz"][1]
-    r_pos = h.table("baseline")["zps_pi_r"][1]
 
-    try:
-        x_eng = h.start["XEng"]
-    except:
-        x_eng = h.start["x_ray_energy"]
     # sanity check: make sure we remembered the right stream name
     assert "zps_pi_r_monitor" in h.stream_names
     pos = h.table("zps_pi_r_monitor")
@@ -92,4 +79,4 @@ def get_tomo_images(h):
 
     pos2 = mot_pos_interp.argmax() + 1
     img_tomo = imgs[: pos2 - chunk_size]  # tomo images
-    return img_tomo
+    return img_tomo, img_bkg_avg, img_dark_avg
