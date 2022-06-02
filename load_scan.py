@@ -78,5 +78,6 @@ def get_tomo_images(h):
     mot_pos_interp = np.interp(img_time, mot_time, mot_pos)
 
     pos2 = mot_pos_interp.argmax() + 1
+    img_angle = mot_pos_interp[: pos2 - chunk_size]  # rotation angles
     img_tomo = imgs[: pos2 - chunk_size]  # tomo images
-    return img_tomo, img_bkg_avg, img_dark_avg
+    return img_tomo, img_bkg_avg, img_dark_avg, img_angle
