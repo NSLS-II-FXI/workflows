@@ -1,7 +1,6 @@
 from datetime import datetime
 import numpy as np
 import pandas as pd
-from tiled.client import from_profile
 from databroker.assets.handlers import AreaDetectorHDF5TimestampHandler
 
 
@@ -13,29 +12,11 @@ def convert_AD_timestamps(ts):
         "US/Eastern"
     )
 
-def get_tomo_images(h):
-    db = from_profile('fxi')
-    dark_scan_id = h.start["plan_args"]["dark_scan_id"]
-    bkg_scan_id = h.start["plan_args"]["bkg_scan_id"]
-
-    # sanity check: make sure we remembered the right stream name
-    assert "zps_pi_r_monitor" in h.stream_names
-    pos = h.table("zps_pi_r_monitor")
-    imgs = np.array(list(h.data("Andor_image")))
-
-    s1 = imgs.shape
-    chunk_size = s1[1]
-    imgs = imgs.reshape(-1, s1[2], s1[3])
-
-    # load darks and bkgs
-    img_dark = np.array(list(db[dark_scan_id].data("Andor_image")))[0]
-    img_bkg = np.array(list(db[bkg_scan_id].data("Andor_image")))[0]
-    s = img_dark.shape
-    img_dark_avg = np.mean(img_dark, axis=0).reshape(1, s[1], s[2])
-    img_bkg_avg = np.mean(img_bkg, axis=0).reshape(1, s[1], s[2])
-
-    with db.reg.handler_context({"AD_HDF5": AreaDetectorHDF5TimestampHandler}):
-        chunked_timestamps = list(h.data("Andor_image"))
+def get_tomo_images(input_dict):
+    pos = input_dict['pos']
+    imgs = input_dict['imgs']
+    chunked_timestamps = input_dict['chunked_timestamps']
+    mot_pos = input_dict['mot_pos']
 
     raw_timestamps = []
     for chunk in chunked_timestamps:
@@ -72,7 +53,6 @@ def get_tomo_images(h):
     )
     mot_time = np.array(mot_time)
 
-    mot_pos = np.array(pos["zps_pi_r"])
     offset = np.min([np.min(img_time), np.min(mot_time)])
     img_time -= offset
     mot_time -= offset
@@ -81,4 +61,4 @@ def get_tomo_images(h):
     pos2 = mot_pos_interp.argmax() + 1
     img_angle = mot_pos_interp[: pos2 - chunk_size]  # rotation angles
     img_tomo = imgs[: pos2 - chunk_size]  # tomo images
-    return img_tomo, img_bkg_avg, img_dark_avg, img_angle
+    return img_tomo, img_angle
