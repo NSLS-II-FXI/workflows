@@ -1,4 +1,4 @@
-from prefect import task, Flow
+from prefect import task, Flow, Parameter
 from load_scan import get_tomo_images
 from tomo_recon_tiled import rotcen_test2
 from tiled.client import from_profile
@@ -41,6 +41,7 @@ def call_find_rot(uid):
     return img, cen
 
 with Flow("test-find-rot") as flow1:
-    call_find_rot('123456')
+    uid = Parameter("uid")
+    call_find_rot(uid)
 
 flow1.register(project_name="TST")
