@@ -36,8 +36,9 @@ def call_find_rot(uid):
                   'imgs': imgs,
                   'chunked_timestamps': chunked_timestamps,
                   'mot_pos': mot_pos}
-    img_tomo = get_tomo_images(input_dict)
-    img, cen = rotcen_test2(img_tomo)
+    img_tomo, img_angle = get_tomo_images(input_dict)
+    img, cen = rotcen_test2(img_tomo, img_bkg_avg, img_dark_avg, img_angle)
+    return img, cen
 
 with Flow("test-find-rot") as flow1:
     call_find_rot('123456')
