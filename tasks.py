@@ -5,7 +5,7 @@ from tiled.client import from_profile
 
 @task
 def call_find_rot(uid):
-    c = from_profile('fxi')
+    c = from_profile('fxi', username=None)
     scan_result = c[uid]
 
     dark_scan_id = scan_result.start["plan_args"]["dark_scan_id"]
