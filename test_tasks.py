@@ -8,4 +8,4 @@ def print_stuff():
 with Flow("print_stuff") as flow1:
     print_stuff()
 
-flow1.register(project="TST", labels=["tst-2022-2.2"], add_default_labels=False, set_schedule_active=False)
+flow1.register(project_name="TST", labels=["tst-2022-2.2"], add_default_labels=False, set_schedule_active=False)
