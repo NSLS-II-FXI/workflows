@@ -44,4 +44,4 @@ with Flow("test-find-rot") as flow1:
     uid = Parameter("uid")
     call_find_rot(uid)
 
-flow1.register(project_name="TST")
+flow1.register(project_name="TST", labels=["tst-2022-2.2"], add_default_labels=False, set_schedule_active=False)
