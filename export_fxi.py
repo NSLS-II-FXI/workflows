@@ -43,7 +43,7 @@ def export_single_scan(scan_id=-1, tiled_client, binning=4, fpath=None):
     locals()[export_function](run, binning=binning, fpath=fpath)
 
 
-def export_tomo_scan(run, fpath=None):
+def export_tomo_scan(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -91,7 +91,7 @@ def export_tomo_scan(run, fpath=None):
     del img_bkg
 
 
-def export_fly_scan(run, fpath=None):
+def export_fly_scan(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -152,7 +152,7 @@ def export_fly_scan(run, fpath=None):
     del img_bkg
 
 
-def export_fly_scan2(run, fpath=None):
+def export_fly_scan2(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -274,7 +274,7 @@ def export_fly_scan2(run, fpath=None):
     del imgs
 
 
-def export_xanes_scan(run, fpath=None):
+def export_xanes_scan(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -338,7 +338,7 @@ def export_xanes_scan(run, fpath=None):
     )
 
 
-def export_xanes_scan_img_only(run, fpath=None):
+def export_xanes_scan_img_only(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -402,7 +402,7 @@ def export_xanes_scan_img_only(run, fpath=None):
     )
 
 
-def export_z_scan(run, fpath=None):
+def export_z_scan(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -451,7 +451,7 @@ def export_z_scan(run, fpath=None):
     del img, img_zscan, img_bkg, img_dark, img_norm
 
 
-def export_z_scan2(run, fpath=None):
+def export_z_scan2(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -509,7 +509,7 @@ def export_z_scan2(run, fpath=None):
     del img, img_zscan, img_bkg, img_dark, img_norm
 
 
-def export_test_scan(run, fpath=None):
+def export_test_scan(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -563,7 +563,7 @@ def export_test_scan(run, fpath=None):
     del img, img_test, img_bkg, img_dark, img_norm
 
 
-def export_count(run, fpath=None):
+def export_count(run, fpath=None, **kwargs):
     """
     load images (e.g. RE(count([Andor], 10)) ) and save to .h5 file
     """
@@ -599,7 +599,7 @@ def export_count(run, fpath=None):
         print("fails to write lakeshore info into {fname}")
 
 
-def export_delay_count(run, fpath=None):
+def export_delay_count(run, fpath=None, **kwargs):
     """
     load images (e.g. RE(count([Andor], 10)) ) and save to .h5 file
     """
@@ -634,7 +634,7 @@ def export_delay_count(run, fpath=None):
         print("fails to write lakeshore info into {fname}")
 
 
-def export_delay_scan(run, fpath=None):
+def export_delay_scan(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -677,7 +677,7 @@ def export_delay_scan(run, fpath=None):
         print("no image stored in this scan")
 
 
-def export_multipos_count(run, fpath=None):
+def export_multipos_count(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -728,7 +728,7 @@ def export_multipos_count(run, fpath=None):
         print("fails to write lakeshore info into {fname}")
 
 
-def export_grid2D_rel(run, fpath=None):
+def export_grid2D_rel(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -763,7 +763,7 @@ def export_grid2D_rel(run, fpath=None):
             img.save(fname_tif)
 
 
-def export_raster_2D_2(run, binning=4, fpath=None):
+def export_raster_2D_2(run, binning=4, fpath=None, **kwargs):
     import tifffile
     from skimage import io
 
@@ -874,7 +874,7 @@ def export_raster_2D_2(run, binning=4, fpath=None):
         print(f"fails to write lakeshore info into {fn_h5_save}")
 
 
-def export_raster_2D(run, binning=4, fpath=None):
+def export_raster_2D(run, binning=4, fpath=None, **kwargs):
     import tifffile
 
     if fpath is None:
@@ -973,7 +973,7 @@ def export_raster_2D(run, binning=4, fpath=None):
         print(f"fails to write lakeshore info into {fn_h5_save}")
 
 
-def export_multipos_2D_xanes_scan2(run, fpath=None):
+def export_multipos_2D_xanes_scan2(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -1057,7 +1057,7 @@ def export_multipos_2D_xanes_scan2(run, fpath=None):
     del img_p, img_p_n
 
 
-def export_multipos_2D_xanes_scan3(run, fpath=None):
+def export_multipos_2D_xanes_scan3(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -1128,7 +1128,7 @@ def export_multipos_2D_xanes_scan3(run, fpath=None):
     del imgs
 
 
-def export_user_fly_only(run, fpath=None):
+def export_user_fly_only(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
     else:
@@ -1244,7 +1244,7 @@ def export_user_fly_only(run, fpath=None):
     del imgs
 
 
-def export_scan_change_expo_time(run, fpath=None, save_range_x=[], save_range_y=[]):
+def export_scan_change_expo_time(run, fpath=None, save_range_x=[], save_range_y=[], **kwargs):
     from skimage import io
 
     if fpath is None:
