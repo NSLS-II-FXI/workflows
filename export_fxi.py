@@ -43,7 +43,7 @@ def export_single_scan(scan_id=-1, tiled_client, binning=4, fpath=None):
     locals()[export_function](start, tiled_client, fpath)
 
 
-def export_tomo_scan(start, tiled_client, fpath=None):
+def export_tomo_scan(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
@@ -51,6 +51,7 @@ def export_tomo_scan(start, tiled_client, fpath=None):
             fpath += "/"
     scan_type = "tomo_scan"
     scan_id = start["scan_id"]
+    start = tiled_client[scan_id].start
     try:
         x_eng = start["XEng"]
     except:
@@ -91,12 +92,13 @@ def export_tomo_scan(start, tiled_client, fpath=None):
     del img_bkg
 
 
-def export_fly_scan(start, tiled_client, fpath=None):
+def export_fly_scan(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
         if not fpath[-1] == "/":
             fpath += "/"
+    start = tiled_client[scan_id].start
     uid = start["uid"]
     note = start["note"]
     scan_type = "fly_scan"
@@ -152,12 +154,13 @@ def export_fly_scan(start, tiled_client, fpath=None):
     del img_bkg
 
 
-def export_fly_scan2(start, tiled_client, fpath=None):
+def export_fly_scan2(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
         if not fpath[-1] == "/":
             fpath += "/"
+    start = tiled_client[scan_id].start
     uid = start["uid"]
     note = start["note"]
     scan_type = "fly_scan2"
@@ -274,12 +277,13 @@ def export_fly_scan2(start, tiled_client, fpath=None):
     del imgs
 
 
-def export_xanes_scan(start, tiled_client, fpath=None):
+def export_xanes_scan(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
         if not fpath[-1] == "/":
             fpath += "/"
+    start = tiled_client[scan_id].start
     zp_z_pos = h.table("baseline")["zp_z"][1]
     DetU_z_pos = h.table("baseline")["DetU_z"][1]
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -338,12 +342,13 @@ def export_xanes_scan(start, tiled_client, fpath=None):
     )
 
 
-def export_xanes_scan_img_only(start, tiled_client, fpath=None):
+def export_xanes_scan_img_only(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
         if not fpath[-1] == "/":
             fpath += "/"
+    start = tiled_client[scan_id].start
     zp_z_pos = h.table("baseline")["zp_z"][1]
     DetU_z_pos = h.table("baseline")["DetU_z"][1]
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -402,12 +407,13 @@ def export_xanes_scan_img_only(start, tiled_client, fpath=None):
     )
 
 
-def export_z_scan(start, tiled_client, fpath=None):
+def export_z_scan(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
         if not fpath[-1] == "/":
             fpath += "/"
+    start = tiled_client[scan_id].start
     zp_z_pos = h.table("baseline")["zp_z"][1]
     DetU_z_pos = h.table("baseline")["DetU_z"][1]
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -451,12 +457,13 @@ def export_z_scan(start, tiled_client, fpath=None):
     del img, img_zscan, img_bkg, img_dark, img_norm
 
 
-def export_z_scan2(start, tiled_client, fpath=None):
+def export_z_scan2(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
         if not fpath[-1] == "/":
             fpath += "/"
+    start = tiled_client[scan_id].start
     zp_z_pos = h.table("baseline")["zp_z"][1]
     DetU_z_pos = h.table("baseline")["DetU_z"][1]
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -509,12 +516,13 @@ def export_z_scan2(start, tiled_client, fpath=None):
     del img, img_zscan, img_bkg, img_dark, img_norm
 
 
-def export_test_scan(start, tiled_client,  fpath=None):
+def export_test_scan(scan_id, tiled_client,  fpath=None):
     if fpath is None:
         fpath = "./"
     else:
         if not fpath[-1] == "/":
             fpath += "/"
+    start = tiled_client[scan_id].start
     zp_z_pos = h.table("baseline")["zp_z"][1]
     DetU_z_pos = h.table("baseline")["DetU_z"][1]
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -563,7 +571,45 @@ def export_test_scan(start, tiled_client,  fpath=None):
     del img, img_test, img_bkg, img_dark, img_norm
 
 
-def export_count(start, tiled_client, fpath=None):
+def export_count(scan_id, tiled_client, fpath=None):
+    """
+    load images (e.g. RE(count([Andor], 10)) ) and save to .h5 file
+    """
+    if fpath is None:
+        fpath = "./"
+    else:
+        if not fpath[-1] == "/":
+            fpath += "/"
+    start = tiled_client[scan_id].start
+    try:
+        zp_z_pos = h.table("baseline")["zp_z"][1]
+        DetU_z_pos = h.table("baseline")["DetU_z"][1]
+        M = (DetU_z_pos / zp_z_pos - 1) * 10.0
+        pxl_sz = 6500.0 / M
+    except:
+        M = 0
+        pxl_sz = 0
+        print("fails to calculate magnification and pxl size")
+
+    start = tiled_client[scan_id].start
+    uid = start["uid"]
+    det = start["detectors"][0]
+    img = get_img(start, det)
+    scan_id = start["scan_id"]
+    fn = fpath + "count_id_" + str(scan_id) + ".h5"
+    with h5py.File(fn, "w") as hf:
+        hf.create_dataset("img", data=img.astype(np.float32))
+        hf.create_dataset("uid", data=uid)
+        hf.create_dataset("scan_id", data=scan_id)
+        hf.create_dataset("Magnification", data=M)
+        hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
+    try:
+        write_lakeshore_to_file(start, fn)
+    except:
+        print("fails to write lakeshore info into {fname}")
+
+
+def export_delay_count(scan_id, tiled_client, fpath=None):
     """
     load images (e.g. RE(count([Andor], 10)) ) and save to .h5 file
     """
@@ -582,10 +628,10 @@ def export_count(start, tiled_client, fpath=None):
         pxl_sz = 0
         print("fails to calculate magnification and pxl size")
 
+    start = tiled_client[scan_id].start
     uid = start["uid"]
     det = start["detectors"][0]
     img = get_img(start, det)
-    scan_id = start["scan_id"]
     fn = fpath + "count_id_" + str(scan_id) + ".h5"
     with h5py.File(fn, "w") as hf:
         hf.create_dataset("img", data=img.astype(np.float32))
@@ -599,48 +645,13 @@ def export_count(start, tiled_client, fpath=None):
         print("fails to write lakeshore info into {fname}")
 
 
-def export_delay_count(start, tiled_client, fpath=None):
-    """
-    load images (e.g. RE(count([Andor], 10)) ) and save to .h5 file
-    """
+def export_delay_scan(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    try:
-        zp_z_pos = h.table("baseline")["zp_z"][1]
-        DetU_z_pos = h.table("baseline")["DetU_z"][1]
-        M = (DetU_z_pos / zp_z_pos - 1) * 10.0
-        pxl_sz = 6500.0 / M
-    except:
-        M = 0
-        pxl_sz = 0
-        print("fails to calculate magnification and pxl size")
-
-    uid = start["uid"]
-    det = start["detectors"][0]
-    img = get_img(start, det)
-    scan_id = start["scan_id"]
-    fn = fpath + "count_id_" + str(scan_id) + ".h5"
-    with h5py.File(fn, "w") as hf:
-        hf.create_dataset("img", data=img.astype(np.float32))
-        hf.create_dataset("uid", data=uid)
-        hf.create_dataset("scan_id", data=scan_id)
-        hf.create_dataset("Magnification", data=M)
-        hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-    try:
-        write_lakeshore_to_file(start, fn)
-    except:
-        print("fails to write lakeshore info into {fname}")
-
-
-def export_delay_scan(start, tiled_client, fpath=None):
-    if fpath is None:
-        fpath = "./"
-    else:
-        if not fpath[-1] == "/":
-            fpath += "/"
+    start = tiled_client[scan_id].start
     det = start["detectors"][0]
     scan_type = start["plan_name"]
     scan_id = start["scan_id"]
@@ -678,12 +689,13 @@ def export_delay_scan(start, tiled_client, fpath=None):
         print("no image stored in this scan")
 
 
-def export_multipos_count(start, tiled_client, fpath=None):
+def export_multipos_count(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
         if not fpath[-1] == "/":
             fpath += "/"
+    start = tiled_client[scan_id].start
     scan_type = start["plan_name"]
     scan_id = start["scan_id"]
     uid = start["uid"]
@@ -729,7 +741,7 @@ def export_multipos_count(start, tiled_client, fpath=None):
         print("fails to write lakeshore info into {fname}")
 
 
-def export_grid2D_rel(start, tiled_client, fpath=None):
+def export_grid2D_rel(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
@@ -739,6 +751,7 @@ def export_grid2D_rel(start, tiled_client, fpath=None):
     DetU_z_pos = h.table("baseline")["DetU_z"][1]
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
+    start = tiled_client[scan_id].start
     uid = start["uid"]
     note = start["note"]
     scan_type = "grid2D_rel"
@@ -764,7 +777,7 @@ def export_grid2D_rel(start, tiled_client, fpath=None):
             img.save(fname_tif)
 
 
-def export_raster_2D_2(start, tiled_client, binning=4, fpath=None):
+def export_raster_2D_2(scan_id, tiled_client, binning=4, fpath=None):
     import tifffile
     from skimage import io
 
@@ -773,6 +786,7 @@ def export_raster_2D_2(start, tiled_client, binning=4, fpath=None):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
+    start = tiled_client[scan_id].start
     uid = start["uid"]
     note = start["note"]
     scan_type = "grid2D_rel"
@@ -875,7 +889,7 @@ def export_raster_2D_2(start, tiled_client, binning=4, fpath=None):
         print(f"fails to write lakeshore info into {fn_h5_save}")
 
 
-def export_raster_2D(start, tiled_client, binning=4, fpath=None):
+def export_raster_2D(scan_id, tiled_client, binning=4, fpath=None):
     import tifffile
 
     if fpath is None:
@@ -884,6 +898,7 @@ def export_raster_2D(start, tiled_client, binning=4, fpath=None):
         if not fpath[-1] == "/":
             fpath += "/"
 
+    start = tiled_client[scan_id].start
     uid = start["uid"]
     note = start["note"]
     scan_type = "grid2D_rel"
@@ -974,12 +989,13 @@ def export_raster_2D(start, tiled_client, binning=4, fpath=None):
         print(f"fails to write lakeshore info into {fn_h5_save}")
 
 
-def export_multipos_2D_xanes_scan2(start, tiled_client, fpath=None):
+def export_multipos_2D_xanes_scan2(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
         if not fpath[-1] == "/":
             fpath += "/"
+    start = tiled_client[scan_id].start
     scan_type = start["plan_name"]
     uid = start["uid"]
     note = start["note"]
@@ -1058,12 +1074,13 @@ def export_multipos_2D_xanes_scan2(start, tiled_client, fpath=None):
     del img_p, img_p_n
 
 
-def export_multipos_2D_xanes_scan3(start, tiled_client, fpath=None):
+def export_multipos_2D_xanes_scan3(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
         if not fpath[-1] == "/":
             fpath += "/"
+    start = tiled_client[scan_id].start
     zp_z_pos = h.table("baseline")["zp_z"][1]
     DetU_z_pos = h.table("baseline")["DetU_z"][1]
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -1129,7 +1146,7 @@ def export_multipos_2D_xanes_scan3(start, tiled_client, fpath=None):
     del imgs
 
 
-def export_user_fly_only(start, tiled_client, fpath=None):
+def export_user_fly_only(scan_id, tiled_client, fpath=None):
     if fpath is None:
         fpath = "./"
     else:
@@ -1245,7 +1262,7 @@ def export_user_fly_only(start, tiled_client, fpath=None):
     del imgs
 
 
-def export_scan_change_expo_time(start, tiled_client,  fpath=None, save_range_x=[], save_range_y=[]):
+def export_scan_change_expo_time(scan_id, tiled_client,  fpath=None, save_range_x=[], save_range_y=[]):
     from skimage import io
 
     if fpath is None:
