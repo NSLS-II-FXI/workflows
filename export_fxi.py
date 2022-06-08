@@ -28,89 +28,21 @@ def is_legacy(start):
     t_new = datetime.datetime(2021, 5, 1)
     t = start["time"] - 3600 * 60 * 4  # there are 4hour offset
     t = datetime.datetime.utcfromtimestamp(t)
-    return t < t_new
+    scan_type = start['plan_name']
+    legacy_set = {'tomo_scan', 'fly_scan', 'xanes_scan', 'xanes_scan2'}
+    return t < t_new and scan_type in legacy_set
 
 
 def export_single_scan(scan_id=-1, tiled_client, binning=4, fpath=None):
+    #raster_2d_2 scan calls export_raster_2D function even though export_raster_2D_2 function exists.
+    # Legacy functions do not exist yet.
     start = tiled_client[scan_id].start
     scan_id = start["scan_id"]
     scan_type = start["plan_name"]
     legacy = is_legacy(start)
-
-    if scan_type == "tomo_scan":
-        print("exporting tomo scan: #{}".format(scan_id))
-        if scan == "old":
-            export_tomo_scan_legacy(h, fpath)
-        else:
-            export_tomo_scan_legacy(h, fpath)
-        print("tomo scan: #{} loading finished".format(scan_id))
-
-    elif scan_type == "fly_scan":
-        print("exporting fly scan: #{}".format(scan_id))
-        if scan == "old":
-            export_fly_scan_legacy(h, fpath)
-        else:
-            export_fly_scan(h, fpath)
-        export_fly_scan(h, fpath)
-        print("fly scan: #{} loading finished".format(scan_id))
-
-    elif scan_type == "fly_scan2":
-        print("exporting fly scan2: #{}".format(scan_id))
-        export_fly_scan2(h, fpath)
-        print("fly scan2: #{} loading finished".format(scan_id))
-    elif scan_type == "xanes_scan" or scan_type == "xanes_scan2":
-        print("exporting xanes scan: #{}".format(scan_id))
-        if scan == "old":
-            export_xanes_scan_legacy(h, fpath)
-        else:
-            export_xanes_scan(h, fpath)
-        print("xanes scan: #{} loading finished".format(scan_id))
-
-    elif scan_type == "xanes_scan_img_only":
-        print("exporting xanes scan image only: #{}".format(scan_id))
-        export_xanes_scan_img_only(h, fpath)
-        print("xanes scan img only: #{} loading finished".format(scan_id))
-    elif scan_type == "z_scan":
-        print("exporting z_scan: #{}".format(scan_id))
-        export_z_scan(h, fpath)
-    elif scan_type == "z_scan2":
-        print("exporting z_scan2: #{}".format(scan_id))
-        export_z_scan2(h, fpath)
-    elif scan_type == "z_scan3":
-        print("exporting z_scan3: #{}".format(scan_id))
-        export_z_scan2(h, fpath)
-    elif scan_type == "test_scan":
-        print("exporting test_scan: #{}".format(scan_id))
-        export_test_scan(h, fpath)
-    elif scan_type == "multipos_count":
-        print(f"exporting multipos_count: #{scan_id}")
-        export_multipos_count(h, fpath)
-    elif scan_type == "grid2D_rel":
-        print("exporting grid2D_rel: #{}".format(scan_id))
-        export_grid2D_rel(h, fpath)
-    elif scan_type == "raster_2D":
-        print("exporting raster_2D: #{}".format(scan_id))
-        export_raster_2D(h, binning)
-    elif scan_type == "raster_2D_2":
-        print("exporting raster_2D_2: #{}".format(scan_id))
-        export_raster_2D(h, binning, fpath)
-    elif scan_type == "count" or scan_type == "delay_count":
-        print("exporting count: #{}".format(scan_id))
-        export_count_img(h, fpath)
-    elif scan_type == "multipos_2D_xanes_scan2":
-        print("exporting multipos_2D_xanes_scan2: #{}".format(scan_id))
-        export_multipos_2D_xanes_scan2(h, fpath)
-    elif scan_type == "multipos_2D_xanes_scan3":
-        print("exporting multipos_2D_xanes_scan3: #{}".format(scan_id))
-        export_multipos_2D_xanes_scan3(h, fpath)
-    elif scan_type == "delay_scan":
-        print("exporting delay_scan #{}".format(scan_id))
-        export_delay_scan(h, fpath)
-    elif scan_type in ("user_fly_only", "dmea_fly_only"):
-        print("exporting user_fly_only #{}".format(scan_id))
-        export_user_fly_only(h, fpath)
-    else:
-        print("Un-recognized scan type ......")
+    export_function = f"export_{scan_type}_legacy" if legacy else f"export_{scan_type}"
+    assert export_function in locals().keys()
+    locals()[export_function](start, fpath)
 
 def export_tomo_scan(h, fpath=None):
     if fpath is None:
@@ -632,7 +564,43 @@ def export_test_scan(h, fpath=None):
     del img, img_test, img_bkg, img_dark, img_norm
 
 
-def export_count_img(h, fpath=None):
+def export_count(h, fpath=None):
+    """
+    load images (e.g. RE(count([Andor], 10)) ) and save to .h5 file
+    """
+    if fpath is None:
+        fpath = "./"
+    else:
+        if not fpath[-1] == "/":
+            fpath += "/"
+    try:
+        zp_z_pos = h.table("baseline")["zp_z"][1]
+        DetU_z_pos = h.table("baseline")["DetU_z"][1]
+        M = (DetU_z_pos / zp_z_pos - 1) * 10.0
+        pxl_sz = 6500.0 / M
+    except:
+        M = 0
+        pxl_sz = 0
+        print("fails to calculate magnification and pxl size")
+
+    uid = h.start["uid"]
+    det = h.start["detectors"][0]
+    img = get_img(h, det)
+    scan_id = h.start["scan_id"]
+    fn = fpath + "count_id_" + str(scan_id) + ".h5"
+    with h5py.File(fn, "w") as hf:
+        hf.create_dataset("img", data=img.astype(np.float32))
+        hf.create_dataset("uid", data=uid)
+        hf.create_dataset("scan_id", data=scan_id)
+        hf.create_dataset("Magnification", data=M)
+        hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
+    try:
+        write_lakeshore_to_file(h, fn)
+    except:
+        print("fails to write lakeshore info into {fname}")
+
+
+def export_delay_count(h, fpath=None):
     """
     load images (e.g. RE(count([Andor], 10)) ) and save to .h5 file
     """
