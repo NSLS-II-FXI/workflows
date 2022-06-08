@@ -24,7 +24,6 @@ def is_legacy(start):
     """
     Check if a start document is from a legacy scan.
     """
-
     t_new = datetime.datetime(2021, 5, 1)
     t = start["time"] - 3600 * 60 * 4  # there are 4hour offset
     t = datetime.datetime.utcfromtimestamp(t)
