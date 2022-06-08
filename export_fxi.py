@@ -1,5 +1,6 @@
 import databroker
 import datetime
+import h5py
 import numpy as np
 import prefect
 
@@ -20,7 +21,7 @@ with Flow("export_fxi") as flow:
     run_export_fxi()
 
 
-def is_legacy(start):
+def is_legacy(run):
     """
     Check if a run.start document is from a legacy scan.
     """
@@ -36,9 +37,8 @@ def export_single_scan(scan_id=-1, tiled_client, binning=4, fpath=None):
     #raster_2d_2 scan calls export_raster_2D function even though export_raster_2D_2 function exists.
     # Legacy functions do not exist yet.
     run = tiled_client[scan_id]
-    scan_id = run.start["scan_id"]
     scan_type = run.start["plan_name"]
-    export_function = f"export_{scan_type}_legacy" if is_legacy(run.start) else f"export_{scan_type}"
+    export_function = f"export_{scan_type}_legacy" if is_legacy(run) else f"export_{scan_type}"
     assert export_function in locals().keys()
     locals()[export_function](run, binning=binning, fpath=fpath)
 
@@ -102,12 +102,12 @@ def export_fly_scan(run, fpath=None, **kwargs):
     scan_type = "fly_scan"
     scan_id = run.start["scan_id"]
     scan_time = run.start["time"]
-    x_pos = h.table("baseline")["zps_sx"][1]
-    y_pos = h.table("baseline")["zps_sy"][1]
-    z_pos = h.table("baseline")["zps_sz"][1]
-    r_pos = h.table("baseline")["zps_pi_r"][1]
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    x_pos = run['baseline']['data']["zps_sx"][1].item()
+    y_pos = run['baseline']['data']["zps_sy"][1].item()
+    z_pos = run['baseline']['data']["zps_sz"][1].item()
+    r_pos = run['baseline']['data']["zps_pi_r"][1].item()
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
@@ -163,12 +163,12 @@ def export_fly_scan2(run, fpath=None, **kwargs):
     scan_type = "fly_scan2"
     scan_id = run.start["scan_id"]
     scan_time = run.start["time"]
-    x_pos = h.table("baseline")["zps_sx"][1]
-    y_pos = h.table("baseline")["zps_sy"][1]
-    z_pos = h.table("baseline")["zps_sz"][1]
-    r_pos = h.table("baseline")["zps_pi_r"][1]
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    x_pos = run['baseline']['data']["zps_sx"][1].item()
+    y_pos = run['baseline']['data']["zps_sy"][1].item()
+    z_pos = run['baseline']['data']["zps_sz"][1].item()
+    r_pos = run['baseline']['data']["zps_pi_r"][1].item()
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
@@ -280,8 +280,8 @@ def export_xanes_scan(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
@@ -344,8 +344,8 @@ def export_xanes_scan_img_only(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
@@ -408,8 +408,8 @@ def export_z_scan(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
@@ -457,8 +457,8 @@ def export_z_scan2(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
@@ -515,8 +515,8 @@ def export_test_scan(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     import tifffile
@@ -573,8 +573,8 @@ def export_count(run, fpath=None, **kwargs):
         if not fpath[-1] == "/":
             fpath += "/"
     try:
-        zp_z_pos = h.table("baseline")["zp_z"][1]
-        DetU_z_pos = h.table("baseline")["DetU_z"][1]
+        zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+        DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
         M = (DetU_z_pos / zp_z_pos - 1) * 10.0
         pxl_sz = 6500.0 / M
     except:
@@ -609,8 +609,8 @@ def export_delay_count(run, fpath=None, **kwargs):
         if not fpath[-1] == "/":
             fpath += "/"
     try:
-        zp_z_pos = h.table("baseline")["zp_z"][1]
-        DetU_z_pos = h.table("baseline")["DetU_z"][1]
+        zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+        DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
         M = (DetU_z_pos / zp_z_pos - 1) * 10.0
         pxl_sz = 6500.0 / M
     except:
@@ -650,8 +650,8 @@ def export_delay_scan(run, fpath=None, **kwargs):
     mot_start = run.start["plan_args"]["start"]
     mot_stop = run.start["plan_args"]["stop"]
     mot_steps = run.start["plan_args"]["steps"]
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     if det == "detA1" or det == "Andor":
@@ -689,8 +689,8 @@ def export_multipos_count(run, fpath=None, **kwargs):
     num_dark = run.start["num_dark_images"]
     num_of_position = run.start["num_of_position"]
     note = run.start["note"]
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
@@ -734,8 +734,8 @@ def export_grid2D_rel(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     uid = run.start["uid"]
@@ -785,8 +785,8 @@ def export_raster_2D_2(run, binning=4, fpath=None, **kwargs):
     img_sizeX = run.start["plan_args"]["img_sizeX"]
     img_sizeY = run.start["plan_args"]["img_sizeY"]
     pix = run.start["plan_args"]["pxl"]
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
@@ -896,8 +896,8 @@ def export_raster_2D(run, binning=4, fpath=None, **kwargs):
     img_sizeX = run.start["plan_args"]["img_sizeX"]
     img_sizeY = run.start["plan_args"]["img_sizeY"]
     pix = run.start["plan_args"]["pxl"]
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
@@ -990,8 +990,8 @@ def export_multipos_2D_xanes_scan2(run, fpath=None, **kwargs):
     chunk_size = run.start["num_bkg_images"]
     num_eng = run.start["num_eng"]
     num_pos = run.start["num_pos"]
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     try:
@@ -1063,8 +1063,8 @@ def export_multipos_2D_xanes_scan3(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
@@ -1141,10 +1141,10 @@ def export_user_fly_only(run, fpath=None, **kwargs):
     scan_time = run.start["time"]
     dark_scan_id = run.start["plan_args"]["dark_scan_id"]
     bkg_scan_id = run.start["plan_args"]["bkg_scan_id"]
-    x_pos = h.table("baseline")["zps_sx"][1]
-    y_pos = h.table("baseline")["zps_sy"][1]
-    z_pos = h.table("baseline")["zps_sz"][1]
-    r_pos = h.table("baseline")["zps_pi_r"][1]
+    x_pos = run['baseline']['data']["zps_sx"][1].item()
+    y_pos = run['baseline']['data']["zps_sy"][1].item()
+    z_pos = run['baseline']['data']["zps_sz"][1].item()
+    r_pos = run['baseline']['data']["zps_pi_r"][1].item()
 
     try:
         x_eng = run.start["XEng"]
@@ -1259,8 +1259,8 @@ def export_scan_change_expo_time(run, fpath=None, save_range_x=[], save_range_y=
     os.makedirs(fpath_t1, exist_ok=True, mode=0o777)
     os.makedirs(fpath_t2, exist_ok=True, mode=0o777)
 
-    zp_z_pos = h.table("baseline")["zp_z"][1]
-    DetU_z_pos = h.table("baseline")["DetU_z"][1]
+    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
+    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
