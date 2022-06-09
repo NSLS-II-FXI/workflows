@@ -34,14 +34,11 @@ def is_legacy(run):
 
 
 def get_fly_scan_angle(run):
-    breakpoint()
     timestamp_tomo = list(run['primary']['data']['Andor_image'])[0]
     timestamp_dark = list(run['dark']['data']['Andor_image'])[0]
     timestamp_bkg = list(run['flat']['data']['Andor_image'])[0]
     assert "zps_pi_r_monitor" in run
-    pos = run["zps_pi_r_monitor"].read()
-    timestamp_mot = timestamp_to_float(pos["time"])
-
+    timestamp_mot = run['zps_pi_r_monitor'].read().coords['time'].values
     img_ini_timestamp = timestamp_tomo[0]
     mot_ini_timestamp = timestamp_mot[
         1
@@ -50,7 +47,7 @@ def get_fly_scan_angle(run):
     tomo_time = timestamp_tomo - img_ini_timestamp
     mot_time = timestamp_mot - mot_ini_timestamp
 
-    mot_pos = np.array(pos["zps_pi_r"])
+    mot_pos = np.array(run['zps_pi_r_monitor'].read()["zps_pi_r"])
     mot_pos_interp = np.interp(tomo_time, mot_time, mot_pos)
 
     img_angle = mot_pos_interp
@@ -331,7 +328,7 @@ def export_xanes_scan(run, fpath=None, **kwargs):
     img_xanes_avg = np.mean(img_xanes, axis=1)
     img_dark = np.array(list(run['dark']['data']['Andor_image']))
     img_dark_avg = np.mean(img_dark, axis=1)
-    img_bkg = np.array(list(run['flat']['data']'Andor_image']))
+    img_bkg = np.array(list(run['flat']['data']['Andor_image']))
     img_bkg_avg = np.mean(img_bkg, axis=1)
 
     eng_list = list(start["eng_list"])
