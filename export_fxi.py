@@ -14,7 +14,10 @@ def run_export_fxi(uid):
     logger = prefect.context.get("logger")
     logger.info(f"Scan ID: {scan_id}")
     logger.info(f"Scan Type: {scan_type}")
-    if scan_type in {'fly_scan', 'multipos_2D_xanes_scan2'}:
+    if scan_type in {'fly_scan', 
+                     'multipos_2D_xanes_scan2', 
+                     'z_scan',
+                     'delay_scan'}:
         export_scan(uid)
     else:
         raise RuntimeError("Only fly_scans can be exported currently")
@@ -112,14 +115,6 @@ def export_tomo_scan(run, fpath=None, **kwargs):
         hf.create_dataset("img_dark_avg", data=img_dark_avg.astype(np.float32))
         hf.create_dataset("img_tomo", data=img_tomo)
         hf.create_dataset("angle", data=img_angle)
-    try:
-        write_lakeshore_to_file(start, fname)
-    except:
-        print("fails to write lakeshore info into {fname}")
-    del img
-    del img_tomo
-    del img_dark
-    del img_bkg
 
 
 def export_fly_scan(run, fpath=None, **kwargs):
@@ -172,16 +167,6 @@ def export_fly_scan(run, fpath=None, **kwargs):
         hf.create_dataset("r_ini", data=r_pos)
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(str(pxl_sz) + "nm"))
-    """
-    try:
-        write_lakeshore_to_file(start, fname)
-    except:
-        print("fails to write lakeshore info into {fname}")
-    """
-    del img_tomo
-    del img_dark
-    del img_bkg
-
 
 def export_fly_scan2(run, fpath=None, **kwargs):
     if fpath is None:
@@ -294,16 +279,6 @@ def export_fly_scan2(run, fpath=None, **kwargs):
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(str(pxl_sz) + "nm"))
 
-    try:
-        write_lakeshore_to_file(start, fname)
-    except:
-        print("fails to write lakeshore info into {fname}")
-
-    del img_tomo
-    del img_dark
-    del img_bkg
-    del imgs
-
 
 def export_xanes_scan(run, fpath=None, **kwargs):
     if fpath is None:
@@ -399,7 +374,7 @@ def export_xanes_scan_img_only(run, fpath=None, **kwargs):
     img_bkg = np.ones(img_xanes.shape)
     img_bkg_avg = np.ones(img_dark_avg.shape)
 
-    eng_list = list(start["eng_list"])
+    eng_list = list(run.start["eng_list"])
 
     img_xanes_norm = (img_xanes_avg - img_dark_avg) * 1.0
     img_xanes_norm[np.isnan(img_xanes_norm)] = 0
@@ -416,21 +391,6 @@ def export_xanes_scan_img_only(run, fpath=None, **kwargs):
         hf.create_dataset("img_xanes", data=np.array(img_xanes_norm, dtype=np.float32))
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-
-    try:
-        write_lakeshore_to_file(start, fname)
-    except:
-        print("fails to write lakeshore info into {fname}")
-
-    del (
-        img_dark,
-        img_dark_avg,
-        img_bkg,
-        img_bkg_avg,
-        img_xanes,
-        img_xanes_avg,
-        img_xanes_norm,
-    )
 
 
 def export_z_scan(run, fpath=None, **kwargs):
@@ -462,6 +422,7 @@ def export_z_scan(run, fpath=None, **kwargs):
     img_norm[np.isinf(img_norm)] = 0
     #    fn = run.start['plan_args']['fn']
     fname = fpath + scan_type + "_id_" + str(scan_id) + ".h5"
+    breakpoint()
     with h5py.File(fname, "w") as hf:
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=scan_id)
@@ -473,13 +434,6 @@ def export_z_scan(run, fpath=None, **kwargs):
         hf.create_dataset("img_norm", data=img_norm.astype(np.float32))
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-
-    try:
-        write_lakeshore_to_file(start, fname)
-    except:
-        print("fails to write lakeshore info into {fname}")
-
-    del img, img_zscan, img_bkg, img_dark, img_norm
 
 
 def export_z_scan2(run, fpath=None, **kwargs):
@@ -532,13 +486,6 @@ def export_z_scan2(run, fpath=None, **kwargs):
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
-    try:
-        write_lakeshore_to_file(start, fname)
-    except:
-        print("fails to write lakeshore info into {fname}")
-
-    del img, img_zscan, img_bkg, img_dark, img_norm
-
 
 def export_test_scan(run, fpath=None, **kwargs):
     if fpath is None:
@@ -586,13 +533,6 @@ def export_test_scan(run, fpath=None, **kwargs):
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
     #    tifffile.imsave(fname_tif, img_norm)
 
-    try:
-        write_lakeshore_to_file(start, fname)
-    except:
-        print("fails to write lakeshore info into {fname}")
-
-    del img, img_test, img_bkg, img_dark, img_norm
-
 
 def export_count(run, fpath=None, **kwargs):
     """
@@ -624,10 +564,6 @@ def export_count(run, fpath=None, **kwargs):
         hf.create_dataset("scan_id", data=scan_id)
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-    try:
-        write_lakeshore_to_file(start, fn)
-    except:
-        print("fails to write lakeshore info into {fname}")
 
 
 def export_delay_count(run, fpath=None, **kwargs):
@@ -659,10 +595,6 @@ def export_delay_count(run, fpath=None, **kwargs):
         hf.create_dataset("scan_id", data=scan_id)
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-    try:
-        write_lakeshore_to_file(start, fn)
-    except:
-        print("fails to write lakeshore info into {fname}")
 
 
 def export_delay_scan(run, fpath=None, **kwargs):
@@ -700,10 +632,6 @@ def export_delay_scan(run, fpath=None, **kwargs):
             hf.create_dataset("motor", data=mot_name)
             hf.create_dataset("Magnification", data=M)
             hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-        try:
-            write_lakeshore_to_file(start, fname)
-        except:
-            print("fails to write lakeshore info into {fname}")
     else:
         print("no image stored in this scan")
 
@@ -753,10 +681,6 @@ def export_multipos_count(run, fpath=None, **kwargs):
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
         for i in range(num_of_position):
             hf.create_dataset(f"img_pos{i+1}", data=np.squeeze(img_group[i]))
-    try:
-        write_lakeshore_to_file(start, fname)
-    except:
-        print("fails to write lakeshore info into {fname}")
 
 
 def export_grid2D_rel(run, fpath=None, **kwargs):
@@ -899,10 +823,6 @@ def export_raster_2D_2(run, binning=4, fpath=None, **kwargs):
         hf.create_dataset("XEng", data=x_eng)
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-    try:
-        write_lakeshore_to_file(start, fn_h5_save)
-    except:
-        print(f"fails to write lakeshore info into {fn_h5_save}")
 
 
 def export_raster_2D(run, binning=4, fpath=None, **kwargs):
@@ -998,10 +918,6 @@ def export_raster_2D(run, binning=4, fpath=None, **kwargs):
         hf.create_dataset("XEng", data=x_eng)
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-    try:
-        write_lakeshore_to_file(start, fn_h5_save)
-    except:
-        print(f"fails to write lakeshore info into {fn_h5_save}")
 
 
 def export_multipos_2D_xanes_scan2(run, fpath=None, **kwargs):
@@ -1038,7 +954,7 @@ def export_multipos_2D_xanes_scan2(run, fpath=None, **kwargs):
     img_dark = np.mean(img_dark, axis=1)
     img_bkg = np.mean(img_bkg, axis=1)
 
-    eng_list = list(start["eng_list"])
+    eng_list = list(run.start["eng_list"])
 
     for repeat in range(repeat_num):  # revised here
         try:
@@ -1074,19 +990,7 @@ def export_multipos_2D_xanes_scan2(run, fpath=None, **kwargs):
                     )
                     hf.create_dataset("Magnification", data=M)
                     hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-                """
-                try:
-                    write_lakeshore_to_file(start, fname)
-                except:
-                    print("fails to write lakeshore info into {fname}")
-                """
-        except:
-            print(f"fails in export repeat# {repeat}")
-    del img_xanes
-    del img_bkg
-    del img_dark
-    del img_p, img_p_n
-
+                    
 
 def export_multipos_2D_xanes_scan3(run, fpath=None, **kwargs):
     if fpath is None:
@@ -1113,7 +1017,7 @@ def export_multipos_2D_xanes_scan3(run, fpath=None, **kwargs):
     imgs = np.array(list(run['primary']['data']['Andor_image']))
     imgs = np.mean(imgs, axis=1)
     img_dark = imgs[0]
-    eng_list = list(start["eng_list"])
+    eng_list = list(run.start["eng_list"])
     s = imgs.shape
 
     img_xanes = np.zeros([num_pos, num_eng, imgs.shape[1], imgs.shape[2]])
@@ -1148,15 +1052,6 @@ def export_multipos_2D_xanes_scan3(run, fpath=None, **kwargs):
             )
             hf.create_dataset("Magnification", data=M)
             hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-
-        try:
-            write_lakeshore_to_file(start, fname)
-        except:
-            print("fails to write lakeshore info into {fname}")
-    del img_xanes
-    del img_bkg
-    del img_dark
-    del imgs
 
 
 def export_user_fly_only(run, fpath=None, **kwargs):
@@ -1264,16 +1159,6 @@ def export_user_fly_only(run, fpath=None, **kwargs):
         hf.create_dataset("z_ini", data=z_pos)
         hf.create_dataset("r_ini", data=r_pos)
 
-    try:
-        write_lakeshore_to_file(start, fname)
-    except:
-        print("fails to write lakeshore info into {fname}")
-
-    del img_tomo
-    del img_dark
-    del img_bkg
-    del imgs
-
 
 def export_scan_change_expo_time(run, fpath=None, save_range_x=[], save_range_y=[], **kwargs):
     from skimage import io
@@ -1371,4 +1256,3 @@ def export_scan_change_expo_time(run, fpath=None, save_range_x=[], save_range_y=
         hf.create_dataset("XEng", data=x_eng)
         hf.create_dataset("pos_x", data=pos_x)
         hf.create_dataset("pos_y", data=pos_y)
-
