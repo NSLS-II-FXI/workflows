@@ -14,7 +14,7 @@ def run_export_fxi():
     logger = prefect.context.get("logger")
     logger.info(f"Scan ID: {scan_id}")
     logger.info(f"Scan Type: {scan_type}")
-    export_single_scan(scan_id, tiled_client)
+    export_scan(scan_id)
 
 
 with Flow("export_fxi") as flow:
@@ -33,15 +33,41 @@ def is_legacy(run):
     return t < t_new and scan_type in legacy_set
 
 
-def export_single_scan(scan_id=-1, tiled_client, binning=4, fpath=None):
+def get_fly_scan_angle(run):
+    breakpoint()
+    timestamp_tomo = list(run['primary']['data']['Andor_image'])[0]
+    timestamp_dark = list(run['dark']['data']['Andor_image'])[0]
+    timestamp_bkg = list(run['flat']['data']['Andor_image'])[0]
+    assert "zps_pi_r_monitor" in run
+    pos = run["zps_pi_r_monitor"].read()
+    timestamp_mot = timestamp_to_float(pos["time"])
+
+    img_ini_timestamp = timestamp_tomo[0]
+    mot_ini_timestamp = timestamp_mot[
+        1
+    ]  # timestamp_mot[1] is the time when taking dark image
+
+    tomo_time = timestamp_tomo - img_ini_timestamp
+    mot_time = timestamp_mot - mot_ini_timestamp
+
+    mot_pos = np.array(pos["zps_pi_r"])
+    mot_pos_interp = np.interp(tomo_time, mot_time, mot_pos)
+
+    img_angle = mot_pos_interp
+    return img_angle
+
+
+def export_scan(scan_id=-1, binning=4, fpath=None):
     #raster_2d_2 scan calls export_raster_2D function even though export_raster_2D_2 function exists.
     # Legacy functions do not exist yet.
+    tiled_client = databroker.from_profile("nsls2", username=None)['fxi']
     run = tiled_client[scan_id]
     scan_type = run.start["plan_name"]
     export_function = f"export_{scan_type}_legacy" if is_legacy(run) else f"export_{scan_type}"
-    if export_function not in locals().keys():
+    if export_function not in globals().keys():
+        print("GLOBAL", globals().keys())
         raise RuntimeError(f"Export function {export_function} for scan type {scan_type} not found.")
-    locals()[export_function](run, binning=binning, fpath=fpath)
+    globals()[export_function](run, binning=binning, fpath=fpath)
 
 
 def export_tomo_scan(run, fpath=None, **kwargs):
@@ -63,13 +89,13 @@ def export_tomo_scan(run, fpath=None, **kwargs):
     angle_e = run.start["plan_args"]["stop"]
     angle_n = run.start["plan_args"]["num"]
     exposure_t = run.start["plan_args"]["exposure_time"]
-    img = np.array(list(run['primary']['Andor_image']))
-    img = np.array(list(run['primary']['Andor_image']))
+    img = np.array(list(run['primary']['data']['Andor_image']))
+    img = np.array(list(run['primary']['data']['Andor_image']))
     img_tomo = np.median(img, axis=1)
-    img = np.array(list(run['dark']['Andor_image']))[0]
-    img_dark = np.array(list(run['dark']['Andor_image']))[0]
-    img = np.array(list(run['flat']['Andor_image']))[0]
-    img_bkg = np.array(list(run['flat']['Andor_image']))[0]
+    img = np.array(list(run['dark']['data']['Andor_image']))[0]
+    img_dark = np.array(list(run['dark']['data']['Andor_image']))[0]
+    img = np.array(list(run['flat']['data']['Andor_image']))[0]
+    img_bkg = np.array(list(run['flat']['data']['Andor_image']))[0]
 
     img_dark_avg = np.median(img_dark, axis=0, keepdims=True)
     img_bkg_avg = np.median(img_bkg, axis=0, keepdims=True)
@@ -116,11 +142,11 @@ def export_fly_scan(run, fpath=None, **kwargs):
     pxl_sz = 6500.0 / M
 
     x_eng = run.start["XEng"]
-    img_angle = get_fly_scan_angle(uid)
+    img_angle = get_fly_scan_angle(run)
 
-    img_tomo = np.array(list(run['primary']['Andor_image']))[0]
-    img_dark = np.array(list(run['dark']['Andor_image']))[0]
-    img_bkg = np.array(list(run['flat']['Andor_image']))[0]
+    img_tomo = np.array(list(run['primary']['data']['Andor_image']))[0]
+    img_dark = np.array(list(run['dark']['data']['Andor_image']))[0]
+    img_bkg = np.array(list(run['flat']['data']['Andor_image']))[0]
 
     img_dark_avg = np.median(img_dark, axis=0, keepdims=True)
     img_bkg_avg = np.median(img_bkg, axis=0, keepdims=True)
@@ -185,18 +211,18 @@ def export_fly_scan2(run, fpath=None, **kwargs):
     assert "zps_pi_r_monitor" in run
     pos = run["zps_pi_r_monitor"].read()
     #    imgs = list(run['primary']['Andor_image'])
-    img_dark = np.array(list(run['primary']['Andor_image'])[-1][:])
-    img_bkg = np.array(list(run['primary']['Andor_image'])[-2][:])
+    img_dark = np.array(list(run['primary']['data']['Andor_image'])[-1][:])
+    img_bkg = np.array(list(run['primary']['data']['Andor_image'])[-2][:])
     s = img_dark.shape
     img_dark_avg = np.mean(img_dark, axis=0).reshape(1, s[1], s[2])
     img_bkg_avg = np.mean(img_bkg, axis=0).reshape(1, s[1], s[2])
 
-    imgs = np.array(list(run['primary']['Andor_image'])[:-2])
+    imgs = np.array(list(run['primary']['data']['Andor_image'])[:-2])
     s1 = imgs.shape
     imgs = imgs.reshape([s1[0] * s1[1], s1[2], s1[3]])
 
     with db.reg.handler_context({"AD_HDF5": AreaDetectorHDF5TimestampHandler}):
-        chunked_timestamps = list(run['primary']['Andor_image'])
+        chunked_timestamps = list(run['primary']['data']['Andor_image'])
 
     chunked_timestamps = chunked_timestamps[:-2]
     raw_timestamps = []
@@ -301,11 +327,11 @@ def export_xanes_scan(run, fpath=None, **kwargs):
     chunk_size = run.start["chunk_size"]
     num_eng = run.start["num_eng"]
 
-    img_xanes = np.array(list(run['primary']['Andor_image']))
+    img_xanes = np.array(list(run['primary']['data']['Andor_image']))
     img_xanes_avg = np.mean(img_xanes, axis=1)
-    img_dark = np.array(list(run['dark']['Andor_image']))
+    img_dark = np.array(list(run['dark']['data']['Andor_image']))
     img_dark_avg = np.mean(img_dark, axis=1)
-    img_bkg = np.array(list(run['flat']['Andor_image']))
+    img_bkg = np.array(list(run['flat']['data']'Andor_image']))
     img_bkg_avg = np.mean(img_bkg, axis=1)
 
     eng_list = list(start["eng_list"])
@@ -365,9 +391,9 @@ def export_xanes_scan_img_only(run, fpath=None, **kwargs):
     chunk_size = run.start["chunk_size"]
     num_eng = run.start["num_eng"]
 
-    img_xanes = np.array(list(run['primary']['Andor_image']))
+    img_xanes = np.array(list(run['primary']['data']['Andor_image']))
     img_xanes_avg = np.mean(img_xanes, axis=1)
-    img_dark = np.array(list(run['dark']['Andor_image']))
+    img_dark = np.array(list(run['dark']['data']['Andor_image']))
     img_dark_avg = np.mean(img_dark, axis=1)
     img_bkg = np.ones(img_xanes.shape)
     img_bkg_avg = np.ones(img_dark_avg.shape)
@@ -426,7 +452,7 @@ def export_z_scan(run, fpath=None, **kwargs):
     num = run.start["plan_args"]["steps"]
     chunk_size = run.start["plan_args"]["chunk_size"]
     note = run.start["plan_args"]["note"] if run.start["plan_args"]["note"] else "None"
-    img = np.array(list(run['primary']['Andor_image']))
+    img = np.array(list(run['primary']['data']['Andor_image']))
     img_zscan = np.mean(img[:num], axis=1)
     img_bkg = np.mean(img[num], axis=0, keepdims=True)
     img_dark = np.mean(img[-1], axis=0, keepdims=True)
@@ -475,7 +501,7 @@ def export_z_scan2(run, fpath=None, **kwargs):
     num = run.start["plan_args"]["steps"]
     chunk_size = run.start["plan_args"]["chunk_size"]
     note = run.start["plan_args"]["note"] if run.start["plan_args"]["note"] else "None"
-    img = np.mean(np.array(list(run['primary']['Andor_image'])), axis=1)
+    img = np.mean(np.array(list(run['primary']['data']['Andor_image'])), axis=1)
     img = np.squeeze(img)
     img_dark = img[0]
     l1 = np.arange(1, len(img), 2)
@@ -535,7 +561,7 @@ def export_test_scan(run, fpath=None, **kwargs):
     num = run.start["plan_args"]["num_img"]
     num_bkg = run.start["plan_args"]["num_bkg"]
     note = run.start["plan_args"]["note"] if run.start["plan_args"]["note"] else "None"
-    img = np.squeeze(np.array(list(run['primary']['Andor_image'])))
+    img = np.squeeze(np.array(list(run['primary']['data']['Andor_image'])))
     assert len(img.shape) == 3, "load test_scan fails..."
     img_test = img[:num]
     img_bkg = np.mean(img[num : num + num_bkg], axis=0, keepdims=True)
@@ -698,7 +724,7 @@ def export_multipos_count(run, fpath=None, **kwargs):
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
-    img_raw = list(run['primary']['Andor_image'])
+    img_raw = list(run['primary']['data']['Andor_image'])
     img_dark = np.squeeze(np.array(img_raw[:num_dark]))
     img_dark_avg = np.mean(img_dark, axis=0, keepdims=True)
     num_repeat = np.int(
@@ -750,7 +776,7 @@ def export_grid2D_rel(run, fpath=None, **kwargs):
     x_eng = run.start["XEng"]
     num1 = run.start["plan_args"]["num1"]
     num2 = run.start["plan_args"]["num2"]
-    img = np.squeeze(np.array(list(run['primary']['Andor_image'])))
+    img = np.squeeze(np.array(list(run['primary']['data']['Andor_image'])))
 
     fname = scan_type + "_id_" + str(scan_id)
     # cwd = os.getcwd()
@@ -794,7 +820,7 @@ def export_raster_2D_2(run, binning=4, fpath=None, **kwargs):
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
-    img_raw = np.squeeze(np.array(list(run['primary']['Andor_image'])))
+    img_raw = np.squeeze(np.array(list(run['primary']['data']['Andor_image'])))
     img_dark_avg = np.mean(img_raw[:num_dark], axis=0, keepdims=True)
     s = img_dark_avg.shape
     # img_bkg_avg = np.mean(img_raw[-num_bkg:], axis=0, keepdims = True)
@@ -905,7 +931,7 @@ def export_raster_2D(run, binning=4, fpath=None, **kwargs):
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
-    img_raw = np.squeeze(np.array(list(run['primary']['Andor_image'])))
+    img_raw = np.squeeze(np.array(list(run['primary']['data']['Andor_image'])))
     img_dark_avg = np.mean(img_raw[:num_dark], axis=0, keepdims=True)
     img_bkg_avg = np.mean(img_raw[-num_bkg:], axis=0, keepdims=True)
     img = img_raw[num_dark:-num_bkg]
@@ -1003,9 +1029,9 @@ def export_multipos_2D_xanes_scan2(run, fpath=None, **kwargs):
     except:
         repeat_num = 1
 
-    img_xanes = np.array(list(run['primary']['Andor_image']))
-    img_dark = np.array(list(run['dark']['Andor_image']))
-    img_bkg = np.array(list(run['flat']['Andor_image']))
+    img_xanes = np.array(list(run['primary']['data']['Andor_image']))
+    img_dark = np.array(list(run['dark']['data']['Andor_image']))
+    img_bkg = np.array(list(run['flat']['data']['Andor_image']))
 
     img_xanes = np.mean(img_xanes, axis=1)
     img_dark = np.mean(img_dark, axis=1)
@@ -1083,7 +1109,7 @@ def export_multipos_2D_xanes_scan3(run, fpath=None, **kwargs):
     num_eng = run.start["num_eng"]
     num_pos = run.start["num_pos"]
     #    repeat_num = run.start['plan_args']['repeat_num']
-    imgs = np.array(list(run['primary']['Andor_image']))
+    imgs = np.array(list(run['primary']['data']['Andor_image']))
     imgs = np.mean(imgs, axis=1)
     img_dark = imgs[0]
     eng_list = list(start["eng_list"])
@@ -1157,7 +1183,7 @@ def export_user_fly_only(run, fpath=None, **kwargs):
     # sanity check: make sure we remembered the right stream name
     assert "zps_pi_r_monitor" in run
     pos = run["zps_pi_r_monitor"].read()
-    imgs = np.array(list(run['primary']['Andor_image']))
+    imgs = np.array(list(run['primary']['data']['Andor_image']))
 
     s1 = imgs.shape
     chunk_size = s1[1]
@@ -1171,7 +1197,7 @@ def export_user_fly_only(run, fpath=None, **kwargs):
     img_bkg_avg = np.mean(img_bkg, axis=0).reshape(1, s[1], s[2])
 
     with db.reg.handler_context({"AD_HDF5": AreaDetectorHDF5TimestampHandler}):
-        chunked_timestamps = list(run['primary']['Andor_image'])
+        chunked_timestamps = list(run['primary']['data']['Andor_image'])
 
     raw_timestamps = []
     for chunk in chunked_timestamps:
@@ -1285,7 +1311,7 @@ def export_scan_change_expo_time(run, fpath=None, save_range_x=[], save_range_y=
     x_range = run.start["plan_args"]["x_range"]
     y_range = run.start["plan_args"]["y_range"]
 
-    imgs = list(run['primary']['Andor_image'])
+    imgs = list(run['primary']['data']['Andor_image'])
     s = imgs[0].shape
 
     if len(save_range_x) == 0:

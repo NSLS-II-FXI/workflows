@@ -16,7 +16,7 @@ def read_all_streams(uid):
         logger.info(f"{stream} elapsed_time = {stream_elapsed_time}")
         logger.info(f"{stream} nbytes = {stream_data.nbytes:_}")
     elapsed_time = ttime.monotonic() - start_time
-    logger.info(f"{elapsed_time = }")
+    logger.info(f"total {elapsed_time = }")
 
 
 with Flow("fxi-data-validation") as flow:
