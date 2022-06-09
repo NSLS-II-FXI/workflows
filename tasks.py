@@ -1,3 +1,4 @@
+import prefect
 from prefect import task, Flow, Parameter
 from tiled.client import from_profile
 from datetime import datetime
@@ -10,6 +11,8 @@ def call_find_rot(uid):
     c = from_profile("nsls2", username=None)
     scan_result = c["fxi"][uid]
 
+    logger = prefect.context.get("logger")
+    logger.info(scan_result.start)
     dark_scan_id = scan_result.start["plan_args"]["dark_scan_id"]
     bkg_scan_id = scan_result.start["plan_args"]["bkg_scan_id"]
 
