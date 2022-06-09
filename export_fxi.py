@@ -182,8 +182,8 @@ def export_fly_scan2(run, fpath=None, **kwargs):
         x_eng = run.start["x_ray_energy"]
     chunk_size = run.start["chunk_size"]
     # sanity check: make sure we remembered the right stream name
-    assert "zps_pi_r_monitor" in h.stream_names
-    pos = h.table("zps_pi_r_monitor")
+    assert "zps_pi_r_monitor" in run
+    pos = run["zps_pi_r_monitor"].read()
     #    imgs = list(run['primary']['Andor_image'])
     img_dark = np.array(list(run['primary']['Andor_image'])[-1][:])
     img_bkg = np.array(list(run['primary']['Andor_image'])[-2][:])
@@ -1155,8 +1155,8 @@ def export_user_fly_only(run, fpath=None, **kwargs):
     except:
         x_eng = run.start["x_ray_energy"]
     # sanity check: make sure we remembered the right stream name
-    assert "zps_pi_r_monitor" in h.stream_names
-    pos = h.table("zps_pi_r_monitor")
+    assert "zps_pi_r_monitor" in run
+    pos = run["zps_pi_r_monitor"].read()
     imgs = np.array(list(run['primary']['Andor_image']))
 
     s1 = imgs.shape
