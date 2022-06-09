@@ -7,18 +7,22 @@ import prefect
 from prefect import task, Flow
 
 @task
-def run_export_fxi():
+def run_export_fxi(uid):
     tiled_client = databroker.from_profile("nsls2", username=None)['fxi']
-    scan_id = tiled_client[-1].start['scan_id']
-    scan_type = tiled_client[-1].start['plan_name']
+    scan_id = tiled_client[uid].start['scan_id']
+    scan_type = tiled_client[uid].start['plan_name']
     logger = prefect.context.get("logger")
     logger.info(f"Scan ID: {scan_id}")
     logger.info(f"Scan Type: {scan_type}")
-    export_scan(scan_id)
+    if scan_type == 'fly_scan':
+        export_scan(uid)
+    else:
+        raise RuntimeError("Only fly_scans can be exported currently")
 
 
-with Flow("export_fxi") as flow:
-    run_export_fxi()
+with Flow("export") as flow:
+    uid = Parameter("uid")
+    run_export_fxi(uid)
 
 
 def is_legacy(run):
