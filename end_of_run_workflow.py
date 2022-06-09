@@ -17,5 +17,10 @@ with Flow("end-of-run-workflow") as flow:
         project_name="FXI",
         parameters={"uid": uid}
     )
-    log_completion(upstream_tasks=[validation_flow])
+    export_flow = create_flow_run(
+        flow_name="export",
+        project_name="FXI",
+        parameter={"uid": uid}
+    )
+    log_completion(upstream_tasks=[validation_flow, export_flow])
 

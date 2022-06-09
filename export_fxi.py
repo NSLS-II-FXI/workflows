@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 import prefect
 
-from prefect import task, Flow
+from prefect import task, Flow, Parameter
 
 @task
 def run_export_fxi(uid):
@@ -14,7 +14,7 @@ def run_export_fxi(uid):
     logger = prefect.context.get("logger")
     logger.info(f"Scan ID: {scan_id}")
     logger.info(f"Scan Type: {scan_type}")
-    if scan_type == 'fly_scan':
+    if scan_type in {'fly_scan', 'multipos_2D_xanes_scan2'}:
         export_scan(uid)
     else:
         raise RuntimeError("Only fly_scans can be exported currently")
