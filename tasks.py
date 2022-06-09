@@ -7,8 +7,8 @@ from databroker.assets.handlers import AreaDetectorHDF5TimestampHandler
 
 @task
 def call_find_rot(uid):
-    c = from_profile('fxi', username=None)
-    scan_result = c[uid]
+    c = from_profile("nsls2", username=None)
+    scan_result = c["fxi"][uid]
 
     dark_scan_id = scan_result.start["plan_args"]["dark_scan_id"]
     bkg_scan_id = scan_result.start["plan_args"]["bkg_scan_id"]
