@@ -6,12 +6,18 @@ import numpy as np
 import pandas as pd
 from databroker.assets.handlers import AreaDetectorHDF5TimestampHandler
 
+
+def timestamp_to_float(t):
+    tf = []
+    for ts in t:
+        tf.append(ts)
+    return np.array(tf)
+
 def get_fly_scan_angle(input_dict):
     timestamp_tomo = input_dict["timestamp_tomo"]
-    timestamp_dark = input_dict["timestamp_dark"]
-    timestamp_bkg = input_dict["timestamp_bkg"]
-
     pos = input_dict["pos"]
+    mot_pos = input_dict["mot_pos"]
+    
     timestamp_mot = timestamp_to_float(pos["time"])
 
     img_ini_timestamp = timestamp_tomo[0]
@@ -28,7 +34,7 @@ def get_fly_scan_angle(input_dict):
     img_angle = mot_pos_interp
     return img_angle
 
-@task
+@task(log_stdout=True)
 def call_find_rot(uid):
     c = from_profile("nsls2", username=None)
     scan_result = c["fxi"][uid]
@@ -60,7 +66,7 @@ def call_find_rot(uid):
     mot_pos = np.array(pos["zps_pi_r"])
 
     input_dict = {'pos': pos,
-                  'chunked_timestamps': chunked_timestamps,
+                  'timestamp_tomo': chunked_timestamps,
                   'mot_pos': mot_pos}
     img_tomo = np.array(list(scan_result["primary"]["data"]["Andor_image"]))[0]
     logger.info(img_tomo)
@@ -165,6 +171,7 @@ def rotcen_test2(
     dark_scale=1,
     filter_name='None',
 ):
+    print('beginning of rotcen2')
     s = [1, data.shape[0], data.shape[1]]
 
     if not atten is None:
@@ -183,7 +190,7 @@ def rotcen_test2(
         np.max([0, sli - addition_slice // 2]),
         np.min([sli + addition_slice // 2 + 1, s[1]]),
     ]
-    tomo_angle = np.arrayimg_angle
+    tomo_angle = np.array(img_angle)
     theta = tomo_angle / 180.0 * np.pi
     img_tomo = np.array(img_tomo[:, sli_exp[0] : sli_exp[1], :])
 
@@ -198,7 +205,6 @@ def rotcen_test2(
                 att = fint(tomo_angle[i])
                 prj[i] = prj[i] / att
         prj_norm = -np.log(prj)
-    f.close()
 
     prj_norm = denoise(prj_norm, denoise_flag)
     prj_norm[np.isnan(prj_norm)] = 0
@@ -207,6 +213,7 @@ def rotcen_test2(
 
     prj_norm -= bkg_level
 
+    print('tomopy prep')
     prj_norm = tomopy.prep.stripe.remove_stripe_fw(
         prj_norm, level=fw_level, wname="db5", sigma=1, pad=True
     )
@@ -239,6 +246,7 @@ def rotcen_test2(
         steps = 26
     cen = np.linspace(start, stop, steps)
     img = np.zeros([len(cen), s[2], s[2]])
+    print('tomopy start reconstructions')
     for i in range(len(cen)):
         if print_flag:
             print("{}: rotcen {}".format(i + 1, cen[i]))
@@ -267,6 +275,7 @@ def rotcen_test2(
                 num_iter=n_iter,
                 filter_name=filter_name
                 )
+    print('tomopy circ_mask')
     img = tomopy.circ_mask(img, axis=0, ratio=circ_mask_ratio)
     return img, cen
 
