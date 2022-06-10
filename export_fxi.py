@@ -6,18 +6,16 @@ import prefect
 
 from prefect import task, Flow, Parameter
 
+
 @task
 def run_export_fxi(uid):
-    tiled_client = databroker.from_profile("nsls2", username=None)['fxi']
-    scan_id = tiled_client[uid].start['scan_id']
-    scan_type = tiled_client[uid].start['plan_name']
+    tiled_client = databroker.from_profile("nsls2", username=None)["fxi"]
+    scan_id = tiled_client[uid].start["scan_id"]
+    scan_type = tiled_client[uid].start["plan_name"]
     logger = prefect.context.get("logger")
     logger.info(f"Scan ID: {scan_id}")
     logger.info(f"Scan Type: {scan_type}")
-    if scan_type in {'fly_scan', 
-                     'multipos_2D_xanes_scan2', 
-                     'z_scan',
-                     'delay_scan'}:
+    if scan_type in {"fly_scan", "multipos_2D_xanes_scan2", "z_scan", "delay_scan"}:
         export_scan(uid)
     else:
         raise RuntimeError("Only fly_scans can be exported currently")
@@ -35,17 +33,17 @@ def is_legacy(run):
     t_new = datetime.datetime(2021, 5, 1)
     t = run.start["time"] - 3600 * 60 * 4  # there are 4hour offset
     t = datetime.datetime.utcfromtimestamp(t)
-    scan_type = run.start['plan_name']
-    legacy_set = {'tomo_scan', 'fly_scan', 'xanes_scan', 'xanes_scan2'}
+    scan_type = run.start["plan_name"]
+    legacy_set = {"tomo_scan", "fly_scan", "xanes_scan", "xanes_scan2"}
     return t < t_new and scan_type in legacy_set
 
 
 def get_fly_scan_angle(run):
-    timestamp_tomo = list(run['primary']['data']['Andor_image'])[0]
-    timestamp_dark = list(run['dark']['data']['Andor_image'])[0]
-    timestamp_bkg = list(run['flat']['data']['Andor_image'])[0]
+    timestamp_tomo = list(run["primary"]["data"]["Andor_image"])[0]
+    timestamp_dark = list(run["dark"]["data"]["Andor_image"])[0]
+    timestamp_bkg = list(run["flat"]["data"]["Andor_image"])[0]
     assert "zps_pi_r_monitor" in run
-    timestamp_mot = run['zps_pi_r_monitor'].read().coords['time'].values
+    timestamp_mot = run["zps_pi_r_monitor"].read().coords["time"].values
     img_ini_timestamp = timestamp_tomo[0]
     mot_ini_timestamp = timestamp_mot[
         1
@@ -54,7 +52,7 @@ def get_fly_scan_angle(run):
     tomo_time = timestamp_tomo - img_ini_timestamp
     mot_time = timestamp_mot - mot_ini_timestamp
 
-    mot_pos = np.array(run['zps_pi_r_monitor'].read()["zps_pi_r"])
+    mot_pos = np.array(run["zps_pi_r_monitor"].read()["zps_pi_r"])
     mot_pos_interp = np.interp(tomo_time, mot_time, mot_pos)
 
     img_angle = mot_pos_interp
@@ -62,15 +60,19 @@ def get_fly_scan_angle(run):
 
 
 def export_scan(scan_id=-1, binning=4, fpath=None):
-    #raster_2d_2 scan calls export_raster_2D function even though export_raster_2D_2 function exists.
+    # raster_2d_2 scan calls export_raster_2D function even though export_raster_2D_2 function exists.
     # Legacy functions do not exist yet.
-    tiled_client = databroker.from_profile("nsls2", username=None)['fxi']
+    tiled_client = databroker.from_profile("nsls2", username=None)["fxi"]
     run = tiled_client[scan_id]
     scan_type = run.start["plan_name"]
-    export_function = f"export_{scan_type}_legacy" if is_legacy(run) else f"export_{scan_type}"
+    export_function = (
+        f"export_{scan_type}_legacy" if is_legacy(run) else f"export_{scan_type}"
+    )
     if export_function not in globals().keys():
         print("GLOBAL", globals().keys())
-        raise RuntimeError(f"Export function {export_function} for scan type {scan_type} not found.")
+        raise RuntimeError(
+            f"Export function {export_function} for scan type {scan_type} not found."
+        )
     globals()[export_function](run, binning=binning, fpath=fpath)
 
 
@@ -93,13 +95,13 @@ def export_tomo_scan(run, fpath=None, **kwargs):
     angle_e = run.start["plan_args"]["stop"]
     angle_n = run.start["plan_args"]["num"]
     exposure_t = run.start["plan_args"]["exposure_time"]
-    img = np.array(list(run['primary']['data']['Andor_image']))
-    img = np.array(list(run['primary']['data']['Andor_image']))
+    img = np.array(list(run["primary"]["data"]["Andor_image"]))
+    img = np.array(list(run["primary"]["data"]["Andor_image"]))
     img_tomo = np.median(img, axis=1)
-    img = np.array(list(run['dark']['data']['Andor_image']))[0]
-    img_dark = np.array(list(run['dark']['data']['Andor_image']))[0]
-    img = np.array(list(run['flat']['data']['Andor_image']))[0]
-    img_bkg = np.array(list(run['flat']['data']['Andor_image']))[0]
+    img = np.array(list(run["dark"]["data"]["Andor_image"]))[0]
+    img_dark = np.array(list(run["dark"]["data"]["Andor_image"]))[0]
+    img = np.array(list(run["flat"]["data"]["Andor_image"]))[0]
+    img_bkg = np.array(list(run["flat"]["data"]["Andor_image"]))[0]
 
     img_dark_avg = np.median(img_dark, axis=0, keepdims=True)
     img_bkg_avg = np.median(img_bkg, axis=0, keepdims=True)
@@ -128,21 +130,21 @@ def export_fly_scan(run, fpath=None, **kwargs):
     scan_type = "fly_scan"
     scan_id = run.start["scan_id"]
     scan_time = run.start["time"]
-    x_pos = run['baseline']['data']["zps_sx"][1].item()
-    y_pos = run['baseline']['data']["zps_sy"][1].item()
-    z_pos = run['baseline']['data']["zps_sz"][1].item()
-    r_pos = run['baseline']['data']["zps_pi_r"][1].item()
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    x_pos = run["baseline"]["data"]["zps_sx"][1].item()
+    y_pos = run["baseline"]["data"]["zps_sy"][1].item()
+    z_pos = run["baseline"]["data"]["zps_sz"][1].item()
+    r_pos = run["baseline"]["data"]["zps_pi_r"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
     x_eng = run.start["XEng"]
     img_angle = get_fly_scan_angle(run)
 
-    img_tomo = np.array(list(run['primary']['data']['Andor_image']))[0]
-    img_dark = np.array(list(run['dark']['data']['Andor_image']))[0]
-    img_bkg = np.array(list(run['flat']['data']['Andor_image']))[0]
+    img_tomo = np.array(list(run["primary"]["data"]["Andor_image"]))[0]
+    img_dark = np.array(list(run["dark"]["data"]["Andor_image"]))[0]
+    img_bkg = np.array(list(run["flat"]["data"]["Andor_image"]))[0]
 
     img_dark_avg = np.median(img_dark, axis=0, keepdims=True)
     img_bkg_avg = np.median(img_bkg, axis=0, keepdims=True)
@@ -168,6 +170,7 @@ def export_fly_scan(run, fpath=None, **kwargs):
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(str(pxl_sz) + "nm"))
 
+
 def export_fly_scan2(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
@@ -179,12 +182,12 @@ def export_fly_scan2(run, fpath=None, **kwargs):
     scan_type = "fly_scan2"
     scan_id = run.start["scan_id"]
     scan_time = run.start["time"]
-    x_pos = run['baseline']['data']["zps_sx"][1].item()
-    y_pos = run['baseline']['data']["zps_sy"][1].item()
-    z_pos = run['baseline']['data']["zps_sz"][1].item()
-    r_pos = run['baseline']['data']["zps_pi_r"][1].item()
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    x_pos = run["baseline"]["data"]["zps_sx"][1].item()
+    y_pos = run["baseline"]["data"]["zps_sy"][1].item()
+    z_pos = run["baseline"]["data"]["zps_sz"][1].item()
+    r_pos = run["baseline"]["data"]["zps_pi_r"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
@@ -197,18 +200,18 @@ def export_fly_scan2(run, fpath=None, **kwargs):
     assert "zps_pi_r_monitor" in run
     pos = run["zps_pi_r_monitor"].read()
     #    imgs = list(run['primary']['Andor_image'])
-    img_dark = np.array(list(run['primary']['data']['Andor_image'])[-1][:])
-    img_bkg = np.array(list(run['primary']['data']['Andor_image'])[-2][:])
+    img_dark = np.array(list(run["primary"]["data"]["Andor_image"])[-1][:])
+    img_bkg = np.array(list(run["primary"]["data"]["Andor_image"])[-2][:])
     s = img_dark.shape
     img_dark_avg = np.mean(img_dark, axis=0).reshape(1, s[1], s[2])
     img_bkg_avg = np.mean(img_bkg, axis=0).reshape(1, s[1], s[2])
 
-    imgs = np.array(list(run['primary']['data']['Andor_image'])[:-2])
+    imgs = np.array(list(run["primary"]["data"]["Andor_image"])[:-2])
     s1 = imgs.shape
     imgs = imgs.reshape([s1[0] * s1[1], s1[2], s1[3]])
 
     with db.reg.handler_context({"AD_HDF5": AreaDetectorHDF5TimestampHandler}):
-        chunked_timestamps = list(run['primary']['data']['Andor_image'])
+        chunked_timestamps = list(run["primary"]["data"]["Andor_image"])
 
     chunked_timestamps = chunked_timestamps[:-2]
     raw_timestamps = []
@@ -286,8 +289,8 @@ def export_xanes_scan(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
@@ -303,11 +306,11 @@ def export_xanes_scan(run, fpath=None, **kwargs):
     chunk_size = run.start["chunk_size"]
     num_eng = run.start["num_eng"]
 
-    img_xanes = np.array(list(run['primary']['data']['Andor_image']))
+    img_xanes = np.array(list(run["primary"]["data"]["Andor_image"]))
     img_xanes_avg = np.mean(img_xanes, axis=1)
-    img_dark = np.array(list(run['dark']['data']['Andor_image']))
+    img_dark = np.array(list(run["dark"]["data"]["Andor_image"]))
     img_dark_avg = np.mean(img_dark, axis=1)
-    img_bkg = np.array(list(run['flat']['data']['Andor_image']))
+    img_bkg = np.array(list(run["flat"]["data"]["Andor_image"]))
     img_bkg_avg = np.mean(img_bkg, axis=1)
 
     eng_list = list(start["eng_list"])
@@ -350,8 +353,8 @@ def export_xanes_scan_img_only(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
@@ -367,9 +370,9 @@ def export_xanes_scan_img_only(run, fpath=None, **kwargs):
     chunk_size = run.start["chunk_size"]
     num_eng = run.start["num_eng"]
 
-    img_xanes = np.array(list(run['primary']['data']['Andor_image']))
+    img_xanes = np.array(list(run["primary"]["data"]["Andor_image"]))
     img_xanes_avg = np.mean(img_xanes, axis=1)
-    img_dark = np.array(list(run['dark']['data']['Andor_image']))
+    img_dark = np.array(list(run["dark"]["data"]["Andor_image"]))
     img_dark_avg = np.mean(img_dark, axis=1)
     img_bkg = np.ones(img_xanes.shape)
     img_bkg_avg = np.ones(img_dark_avg.shape)
@@ -399,8 +402,8 @@ def export_z_scan(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
@@ -413,7 +416,7 @@ def export_z_scan(run, fpath=None, **kwargs):
     num = run.start["plan_args"]["steps"]
     chunk_size = run.start["plan_args"]["chunk_size"]
     note = run.start["plan_args"]["note"] if run.start["plan_args"]["note"] else "None"
-    img = np.array(list(run['primary']['data']['Andor_image']))
+    img = np.array(list(run["primary"]["data"]["Andor_image"]))
     img_zscan = np.mean(img[:num], axis=1)
     img_bkg = np.mean(img[num], axis=0, keepdims=True)
     img_dark = np.mean(img[-1], axis=0, keepdims=True)
@@ -442,8 +445,8 @@ def export_z_scan2(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
@@ -456,7 +459,7 @@ def export_z_scan2(run, fpath=None, **kwargs):
     num = run.start["plan_args"]["steps"]
     chunk_size = run.start["plan_args"]["chunk_size"]
     note = run.start["plan_args"]["note"] if run.start["plan_args"]["note"] else "None"
-    img = np.mean(np.array(list(run['primary']['data']['Andor_image'])), axis=1)
+    img = np.mean(np.array(list(run["primary"]["data"]["Andor_image"])), axis=1)
     img = np.squeeze(img)
     img_dark = img[0]
     l1 = np.arange(1, len(img), 2)
@@ -493,8 +496,8 @@ def export_test_scan(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     import tifffile
@@ -509,7 +512,7 @@ def export_test_scan(run, fpath=None, **kwargs):
     num = run.start["plan_args"]["num_img"]
     num_bkg = run.start["plan_args"]["num_bkg"]
     note = run.start["plan_args"]["note"] if run.start["plan_args"]["note"] else "None"
-    img = np.squeeze(np.array(list(run['primary']['data']['Andor_image'])))
+    img = np.squeeze(np.array(list(run["primary"]["data"]["Andor_image"])))
     assert len(img.shape) == 3, "load test_scan fails..."
     img_test = img[:num]
     img_bkg = np.mean(img[num : num + num_bkg], axis=0, keepdims=True)
@@ -544,8 +547,8 @@ def export_count(run, fpath=None, **kwargs):
         if not fpath[-1] == "/":
             fpath += "/"
     try:
-        zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-        DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+        zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+        DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
         M = (DetU_z_pos / zp_z_pos - 1) * 10.0
         pxl_sz = 6500.0 / M
     except:
@@ -576,8 +579,8 @@ def export_delay_count(run, fpath=None, **kwargs):
         if not fpath[-1] == "/":
             fpath += "/"
     try:
-        zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-        DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+        zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+        DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
         M = (DetU_z_pos / zp_z_pos - 1) * 10.0
         pxl_sz = 6500.0 / M
     except:
@@ -613,8 +616,8 @@ def export_delay_scan(run, fpath=None, **kwargs):
     mot_start = run.start["plan_args"]["start"]
     mot_stop = run.start["plan_args"]["stop"]
     mot_steps = run.start["plan_args"]["steps"]
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     if det == "detA1" or det == "Andor":
@@ -648,12 +651,12 @@ def export_multipos_count(run, fpath=None, **kwargs):
     num_dark = run.start["num_dark_images"]
     num_of_position = run.start["num_of_position"]
     note = run.start["note"]
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
-    img_raw = list(run['primary']['data']['Andor_image'])
+    img_raw = list(run["primary"]["data"]["Andor_image"])
     img_dark = np.squeeze(np.array(img_raw[:num_dark]))
     img_dark_avg = np.mean(img_dark, axis=0, keepdims=True)
     num_repeat = np.int(
@@ -689,8 +692,8 @@ def export_grid2D_rel(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     uid = run.start["uid"]
@@ -701,7 +704,7 @@ def export_grid2D_rel(run, fpath=None, **kwargs):
     x_eng = run.start["XEng"]
     num1 = run.start["plan_args"]["num1"]
     num2 = run.start["plan_args"]["num2"]
-    img = np.squeeze(np.array(list(run['primary']['data']['Andor_image'])))
+    img = np.squeeze(np.array(list(run["primary"]["data"]["Andor_image"])))
 
     fname = scan_type + "_id_" + str(scan_id)
     # cwd = os.getcwd()
@@ -740,12 +743,12 @@ def export_raster_2D_2(run, binning=4, fpath=None, **kwargs):
     img_sizeX = run.start["plan_args"]["img_sizeX"]
     img_sizeY = run.start["plan_args"]["img_sizeY"]
     pix = run.start["plan_args"]["pxl"]
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
-    img_raw = np.squeeze(np.array(list(run['primary']['data']['Andor_image'])))
+    img_raw = np.squeeze(np.array(list(run["primary"]["data"]["Andor_image"])))
     img_dark_avg = np.mean(img_raw[:num_dark], axis=0, keepdims=True)
     s = img_dark_avg.shape
     # img_bkg_avg = np.mean(img_raw[-num_bkg:], axis=0, keepdims = True)
@@ -809,7 +812,7 @@ def export_raster_2D_2(run, binning=4, fpath=None, **kwargs):
     """
     s = img.shape
     tmp = bin_ndarray(img, new_shape=(s[0], int(s[1]/binning), int(s[2]/binning)))
-    for i in range(num_img):  
+    for i in range(num_img):
         fout = f'{new_dir}/img_{i:02d}_binning_{binning}.tiff'
         print(f'saving {fout}')
         tifffile.imsave(fout, np.array(tmp[i], dtype=np.float32))
@@ -847,12 +850,12 @@ def export_raster_2D(run, binning=4, fpath=None, **kwargs):
     img_sizeX = run.start["plan_args"]["img_sizeX"]
     img_sizeY = run.start["plan_args"]["img_sizeY"]
     pix = run.start["plan_args"]["pxl"]
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
 
-    img_raw = np.squeeze(np.array(list(run['primary']['data']['Andor_image'])))
+    img_raw = np.squeeze(np.array(list(run["primary"]["data"]["Andor_image"])))
     img_dark_avg = np.mean(img_raw[:num_dark], axis=0, keepdims=True)
     img_bkg_avg = np.mean(img_raw[-num_bkg:], axis=0, keepdims=True)
     img = img_raw[num_dark:-num_bkg]
@@ -904,7 +907,7 @@ def export_raster_2D(run, binning=4, fpath=None, **kwargs):
     """
     s = img.shape
     tmp = bin_ndarray(img, new_shape=(s[0], int(s[1]/binning), int(s[2]/binning)))
-    for i in range(num_img):  
+    for i in range(num_img):
         fout = f'{new_dir}/img_{i:02d}_binning_{binning}.tiff'
         print(f'saving {fout}')
         tifffile.imsave(fout, np.array(tmp[i], dtype=np.float32))
@@ -919,7 +922,7 @@ def export_raster_2D(run, binning=4, fpath=None, **kwargs):
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
-"""
+
 def export_multipos_2D_xanes_scan2(run, fpath=None, **kwargs):
     if fpath is None:
         fpath = "./"
@@ -937,60 +940,48 @@ def export_multipos_2D_xanes_scan2(run, fpath=None, **kwargs):
     chunk_size = run.start["num_bkg_images"]
     num_eng = run.start["num_eng"]
     num_pos = run.start["num_pos"]
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     try:
         repeat_num = run.start["plan_args"]["repeat_num"]
     except:
         repeat_num = 1
-
-    img_xanes = np.array(list(run['primary']['data']['Andor_image']))
-    img_dark = np.array(list(run['dark']['data']['Andor_image']))
-    img_bkg = np.array(list(run['flat']['data']['Andor_image']))
-
+    img_xanes = np.array(list(run["primary"]["data"]["Andor_image"]))
+    img_dark = np.array(list(run["dark"]["data"]["Andor_image"]))
+    img_bkg = np.array(list(run["flat"]["data"]["Andor_image"]))
     img_xanes = np.mean(img_xanes, axis=1)
     img_dark = np.mean(img_dark, axis=1)
     img_bkg = np.mean(img_bkg, axis=1)
-
-    eng_list = list(run.start["eng_list"])
+    eng_list = list(start["eng_list"])
 
     for repeat in range(repeat_num):  # revised here
-        try:
-            print(f"repeat: {repeat}")
-            id_s = int(repeat * num_eng)
-            id_e = int((repeat + 1) * num_eng)
-            img_x = img_xanes[id_s * num_pos : id_e * num_pos]  # xanes image
-            img_b = img_bkg[id_s:id_e]  # bkg image
-            # save data
-            # fn = os.getcwd() + "/"
-            fn = fpath
-            for j in range(num_pos):
-                img_p = img_x[j::num_pos]
-                img_p_n = (img_p - img_dark) / (img_b - img_dark)
-                fname = (
-                    f"{fn}{scan_type}_id_{scan_id}_repeat_{repeat:02d}_pos_{j:02d}.h5"
-                )
-                print(f"saving {fname}")
-                with h5py.File(fname, "w") as hf:
-                    hf.create_dataset("uid", data=uid)
-                    hf.create_dataset("scan_id", data=scan_id)
-                    hf.create_dataset("note", data=str(note))
-                    hf.create_dataset("scan_time", data=scan_time)
-                    hf.create_dataset("X_eng", data=eng_list)
-                    hf.create_dataset(
-                        "img_bkg", data=np.array(img_bkg, dtype=np.float32)
-                    )
-                    hf.create_dataset(
-                        "img_dark", data=np.array(img_dark, dtype=np.float32)
-                    )
-                    hf.create_dataset(
-                        "img_xanes", data=np.array(img_p_n, dtype=np.float32)
-                    )
-                    hf.create_dataset("Magnification", data=M)
-                    hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-                    
+        print(f"repeat: {repeat}")
+        id_s = int(repeat * num_eng)
+        id_e = int((repeat + 1) * num_eng)
+        img_x = img_xanes[id_s * num_pos : id_e * num_pos]  # xanes image
+        img_b = img_bkg[id_s:id_e]  # bkg image
+        # save data
+        # fn = os.getcwd() + "/"
+        fn = fpath
+        for j in range(num_pos):
+            img_p = img_x[j::num_pos]
+            img_p_n = (img_p - img_dark) / (img_b - img_dark)
+            fname = f"{fn}{scan_type}_id_{scan_id}_repeat_{repeat:02d}_pos_{j:02d}.h5"
+            print(f"saving {fname}")
+            with h5py.File(fname, "w") as hf:
+                hf.create_dataset("uid", data=uid)
+                hf.create_dataset("scan_id", data=scan_id)
+                hf.create_dataset("note", data=str(note))
+                hf.create_dataset("scan_time", data=scan_time)
+                hf.create_dataset("X_eng", data=eng_list)
+                hf.create_dataset("img_bkg", data=np.array(img_bkg, dtype=np.float32))
+                hf.create_dataset("img_dark", data=np.array(img_dark, dtype=np.float32))
+                hf.create_dataset("img_xanes", data=np.array(img_p_n, dtype=np.float32))
+                hf.create_dataset("Magnification", data=M)
+                hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
+
 
 def export_multipos_2D_xanes_scan3(run, fpath=None, **kwargs):
     if fpath is None:
@@ -998,8 +989,8 @@ def export_multipos_2D_xanes_scan3(run, fpath=None, **kwargs):
     else:
         if not fpath[-1] == "/":
             fpath += "/"
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
@@ -1014,7 +1005,7 @@ def export_multipos_2D_xanes_scan3(run, fpath=None, **kwargs):
     num_eng = run.start["num_eng"]
     num_pos = run.start["num_pos"]
     #    repeat_num = run.start['plan_args']['repeat_num']
-    imgs = np.array(list(run['primary']['data']['Andor_image']))
+    imgs = np.array(list(run["primary"]["data"]["Andor_image"]))
     imgs = np.mean(imgs, axis=1)
     img_dark = imgs[0]
     eng_list = list(run.start["eng_list"])
@@ -1052,7 +1043,7 @@ def export_multipos_2D_xanes_scan3(run, fpath=None, **kwargs):
             )
             hf.create_dataset("Magnification", data=M)
             hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-"""
+
 
 def export_user_fly_only(run, fpath=None, **kwargs):
     if fpath is None:
@@ -1067,10 +1058,10 @@ def export_user_fly_only(run, fpath=None, **kwargs):
     scan_time = run.start["time"]
     dark_scan_id = run.start["plan_args"]["dark_scan_id"]
     bkg_scan_id = run.start["plan_args"]["bkg_scan_id"]
-    x_pos = run['baseline']['data']["zps_sx"][1].item()
-    y_pos = run['baseline']['data']["zps_sy"][1].item()
-    z_pos = run['baseline']['data']["zps_sz"][1].item()
-    r_pos = run['baseline']['data']["zps_pi_r"][1].item()
+    x_pos = run["baseline"]["data"]["zps_sx"][1].item()
+    y_pos = run["baseline"]["data"]["zps_sy"][1].item()
+    z_pos = run["baseline"]["data"]["zps_sz"][1].item()
+    r_pos = run["baseline"]["data"]["zps_pi_r"][1].item()
 
     try:
         x_eng = run.start["XEng"]
@@ -1079,7 +1070,7 @@ def export_user_fly_only(run, fpath=None, **kwargs):
     # sanity check: make sure we remembered the right stream name
     assert "zps_pi_r_monitor" in run
     pos = run["zps_pi_r_monitor"].read()
-    imgs = np.array(list(run['primary']['data']['Andor_image']))
+    imgs = np.array(list(run["primary"]["data"]["Andor_image"]))
 
     s1 = imgs.shape
     chunk_size = s1[1]
@@ -1093,7 +1084,7 @@ def export_user_fly_only(run, fpath=None, **kwargs):
     img_bkg_avg = np.mean(img_bkg, axis=0).reshape(1, s[1], s[2])
 
     with db.reg.handler_context({"AD_HDF5": AreaDetectorHDF5TimestampHandler}):
-        chunked_timestamps = list(run['primary']['data']['Andor_image'])
+        chunked_timestamps = list(run["primary"]["data"]["Andor_image"])
 
     raw_timestamps = []
     for chunk in chunked_timestamps:
@@ -1160,7 +1151,9 @@ def export_user_fly_only(run, fpath=None, **kwargs):
         hf.create_dataset("r_ini", data=r_pos)
 
 
-def export_scan_change_expo_time(run, fpath=None, save_range_x=[], save_range_y=[], **kwargs):
+def export_scan_change_expo_time(
+    run, fpath=None, save_range_x=[], save_range_y=[], **kwargs
+):
     from skimage import io
 
     if fpath is None:
@@ -1175,8 +1168,8 @@ def export_scan_change_expo_time(run, fpath=None, save_range_x=[], save_range_y=
     os.makedirs(fpath_t1, exist_ok=True, mode=0o777)
     os.makedirs(fpath_t2, exist_ok=True, mode=0o777)
 
-    zp_z_pos = run['baseline']['data']["zp_z"][1].item()
-    DetU_z_pos = run['baseline']['data']["DetU_z"][1].item()
+    zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
+    DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     scan_type = run.start["plan_name"]
@@ -1197,7 +1190,7 @@ def export_scan_change_expo_time(run, fpath=None, save_range_x=[], save_range_y=
     x_range = run.start["plan_args"]["x_range"]
     y_range = run.start["plan_args"]["y_range"]
 
-    imgs = list(run['primary']['data']['Andor_image'])
+    imgs = list(run["primary"]["data"]["Andor_image"])
     s = imgs[0].shape
 
     if len(save_range_x) == 0:
