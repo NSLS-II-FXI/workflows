@@ -19,15 +19,7 @@ def run_export_fxi(uid):
     logger = prefect.context.get("logger")
     logger.info(f"Scan ID: {scan_id}")
     logger.info(f"Scan Type: {scan_type}")
-    if scan_type in {
-        "fly_scan",
-        "multipos_2D_xanes_scan2",
-        "z_scan",
-        "delay_scan",
-    }:
-        export_scan(uid, filepath="/nsls2/data/data/dssi/scratch/prefect-outputs/fxi")
-    else:
-        raise RuntimeError("Only fly_scans can be exported currently")
+    export_scan(uid, filepath="/nsls2/data/data/dssi/scratch/prefect-outputs/fxi")
 
 
 with Flow("export") as flow:
@@ -73,14 +65,13 @@ def convert_AD_timestamps(ts):
     )
 
 
-# TODO: Fix this    
-def get_img(h, det="Andor", sli=[]):
+def get_img(run, det="Andor", sli=[]):
     "Take in a Header and return a numpy array of detA1 image(s)."
     det_name = f"{det}_image"
     if len(sli) == 2:
-        img = np.array(list(h.data(det_name))[sli[0] : sli[1]])
+        img = np.array(list(run['primary']['data'][det_name])[sli[0] : sli[1]])
     else:
-        img = np.array(list(h.data(det_name)))
+        img = np.array(list(run['primary']['data'][det_name]))
     return np.squeeze(img)
 
 
@@ -541,7 +532,7 @@ def export_count(run, filepath="", **kwargs):
 
     uid = run.start["uid"]
     det = run.start["detectors"][0]
-    img = get_img(run.start, det)
+    img = get_img(run, det)
     scan_id = run.start["scan_id"]
     filename = os.path.join(filepath, f"count_id_{scan_id}.h5")
 
@@ -568,9 +559,9 @@ def export_delay_count(run, filepath="", **kwargs):
         print("fails to calculate magnification and pxl size")
 
     uid = run.start["uid"]
-    scan_id = run.start['scan_id']
+    scan_id = run.start["scan_id"]
     det = run.start["detectors"][0]
-    img = get_img(run.start, det)
+    img = get_img(run, det)
 
     filename = os.path.join(filepath, f"count_id_{scan_id}.h5")
 
@@ -598,7 +589,7 @@ def export_delay_scan(run, filepath="", **kwargs):
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
     pxl_sz = 6500.0 / M
     if det == "detA1" or det == "Andor":
-        img = get_img(run.start, det)
+        img = get_img(run, det)
 
         filename = os.path.join(
             os.path.abspath(filepath), f"{scan_type}_id_{scan_id}.h5"
@@ -743,7 +734,7 @@ def export_raster_2D_2(run, binning=4, filepath="", **kwargs):
     img_patch_bin = bin_ndarray(
         img_patch, new_shape=(1, int(s[1] / binning), int(s[2] / binning))
     )
-    scan_id = run.start['scan_id']
+    scan_id = run.start["scan_id"]
     fout_tiff = filepath + f"raster2D_scan_{scan_id}_binning_{binning}.tiff"
     fout_txt = filepath + f"raster2D_scan_{scan_id}_cord.txt"
     print(f"{pos_file_for_print}")
