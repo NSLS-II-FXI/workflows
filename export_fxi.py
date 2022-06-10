@@ -544,8 +544,9 @@ def export_count(run, filepath='', **kwargs):
     det = run.start["detectors"][0]
     img = get_img(start, det)
     scan_id = run.start["scan_id"]
-    fn = filepath + "count_id_" + str(scan_id) + ".h5"
-    with h5py.File(fn, "w") as hf:
+    filename = os.path.join(filepath, f'count_id_{scan_id}.h5'
+
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("img", data=img.astype(np.float32))
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=scan_id)
@@ -570,8 +571,10 @@ def export_delay_count(run, filepath='', **kwargs):
     uid = run.start["uid"]
     det = run.start["detectors"][0]
     img = get_img(start, det)
-    fn = filepath + "count_id_" + str(scan_id) + ".h5"
-    with h5py.File(fn, "w") as hf:
+
+    filename = os.path.join(filepath, f'count_id_{scan_id}.h5'
+
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("img", data=img.astype(np.float32))
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=scan_id)
@@ -677,8 +680,6 @@ def export_grid2D_rel(run, filepath='', **kwargs):
 
     folder_name = os.path.join(os.path.abspath(filepath), 
                                 f'{scan_type}_id_{scan_id}')
-    
-    # Make the folder.
     Path(folder_name).mkdir(parents=True, exist_ok=True)
 
     for i in range(num1):
@@ -759,21 +760,16 @@ def export_raster_2D_2(run, binning=4, filepath='', **kwargs):
         f.writelines(pos_file)
     # tifffile.imsave(fout_tiff, np.array(img_patch_bin, dtype=np.float32))
     num_img = int(x_num) * int(y_num)
-    # cwd = os.getcwd()
-    # new_dir = f"{cwd}/raster_scan_{scan_id}"
-    new_dir = filepath + f"raster_scan_{scan_id}"
-    if not os.path.exists(new_dir):
-        os.mkdir(new_dir)
-    """
-    s = img.shape
-    tmp = bin_ndarray(img, new_shape=(s[0], int(s[1]/binning), int(s[2]/binning)))
-    for i in range(num_img):
-        fout = f'{new_dir}/img_{i:02d}_binning_{binning}.tiff'
-        print(f'saving {fout}')
-        tifffile.imsave(fout, np.array(tmp[i], dtype=np.float32))
-    """
-    fn_h5_save = f"{new_dir}/img_{i:02d}_binning_{binning}.h5"
-    with h5py.File(fn_h5_save, "w") as hf:
+    
+    folder_name = os.path.join(os.path.abspath(filepath), 
+                                f'raster_scan_{scan_id}')
+    
+    # Make the folder.
+    Path(folder_name).mkdir(parents=True, exist_ok=True)
+    
+    filemane = os.path.join(folder_name, f'img_{i:02d}_binning_{binning}.h5'
+
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset(
             "img_patch", data=np.array(img_patch_bin, np.float32)
         )
@@ -844,21 +840,13 @@ def export_raster_2D(run, binning=4, filepath='', **kwargs):
     with open(f"{fout_txt}", "w+") as f:
         f.writelines(pos_file)
     tifffile.imsave(fout_tiff, np.array(img_patch_bin, dtype=np.float32))
-    # cwd = os.getcwd()
-    # new_dir = f"{cwd}/raster_scan_{scan_id}"
-    new_dir = filepath + f"raster_scan_{scan_id}"
-    if not os.path.exists(new_dir):
-        os.mkdir(new_dir)
-    """
-    s = img.shape
-    tmp = bin_ndarray(img, new_shape=(s[0], int(s[1]/binning), int(s[2]/binning)))
-    for i in range(num_img):
-        fout = f'{new_dir}/img_{i:02d}_binning_{binning}.tiff'
-        print(f'saving {fout}')
-        tifffile.imsave(fout, np.array(tmp[i], dtype=np.float32))
-    """
-    fn_h5_save = f"{new_dir}/img_{i:02d}_binning_{binning}.h5"
-    with h5py.File(fn_h5_save, "w") as hf:
+    
+    folder_name = os.path.join(os.path.abspath(filepath), 
+                                f'raster_scan_{scan_id}')
+    Path(folder_name).mkdir(parents=True, exist_ok=True)
+    filename = os.path.join(folder_name, f'img_{i:02d}_binning_{binning}.h5'
+    
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset(
             "img_patch", data=np.array(img_patch_bin, np.float32)
         )
