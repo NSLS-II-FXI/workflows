@@ -6,6 +6,28 @@ import numpy as np
 import pandas as pd
 from databroker.assets.handlers import AreaDetectorHDF5TimestampHandler
 
+def get_fly_scan_angle(input_dict):
+    timestamp_tomo = input_dict["timestamp_tomo"]
+    timestamp_dark = input_dict["timestamp_dark"]
+    timestamp_bkg = input_dict["timestamp_bkg"]
+
+    pos = input_dict["pos"]
+    timestamp_mot = timestamp_to_float(pos["time"])
+
+    img_ini_timestamp = timestamp_tomo[0]
+    mot_ini_timestamp = timestamp_mot[
+        1
+    ]  # timestamp_mot[1] is the time when taking dark image
+
+    tomo_time = timestamp_tomo - img_ini_timestamp
+    mot_time = timestamp_mot - mot_ini_timestamp
+
+    mot_pos = np.array(pos["zps_pi_r"])
+    mot_pos_interp = np.interp(tomo_time, mot_time, mot_pos)
+
+    img_angle = mot_pos_interp
+    return img_angle
+
 @task
 def call_find_rot(uid):
     c = from_profile("nsls2", username=None)
@@ -13,24 +35,21 @@ def call_find_rot(uid):
 
     logger = prefect.context.get("logger")
     logger.info(scan_result.start)
-    dark_scan_id = scan_result.start["plan_args"]["dark_scan_id"]
-    bkg_scan_id = scan_result.start["plan_args"]["bkg_scan_id"]
 
     # sanity check: make sure we remembered the right stream name
-    assert "zps_pi_r_monitor" in scan_result.stream_names
-    pos = scan_result.table("zps_pi_r_monitor")
-    imgs = np.array(list(scan_result.data("Andor_image")))
+    assert "zps_pi_r_monitor" in scan_result
+    pos = scan_result["zps_pi_r_monitor"]["data"]
+    imgs = np.array(list(scan_result["primary"]["data"]["Andor_image"]))
 
     s1 = imgs.shape
     chunk_size = s1[1]
     imgs = imgs.reshape(-1, s1[2], s1[3])
 
     # load darks and bkgs
-    img_dark = np.array(list(c[dark_scan_id].data("Andor_image")))[0]
-    img_bkg = np.array(list(c[bkg_scan_id].data("Andor_image")))[0]
-    s = img_dark.shape
-    img_dark_avg = np.mean(img_dark, axis=0).reshape(1, s[1], s[2])
-    img_bkg_avg = np.mean(img_bkg, axis=0).reshape(1, s[1], s[2])
+    img_dark = np.array(list(c["dark"]["data"]["Andor_image"]))[0]
+    img_bkg = np.array(list(c["bkg"]["data"]["Andor_image"]))[0]
+    img_dark_avg = np.mean(img_dark, axis=0, keepdims=True)
+    img_bkg_avg = np.mean(img_bkg, axis=0, keepdims=True)
 
     with db.reg.handler_context({"AD_HDF5": AreaDetectorHDF5TimestampHandler}):
         chunked_timestamps = list(scan_result.data("Andor_image"))
@@ -38,10 +57,11 @@ def call_find_rot(uid):
     mot_pos = np.array(pos["zps_pi_r"])
 
     input_dict = {'pos': pos,
-                  'imgs': imgs,
                   'chunked_timestamps': chunked_timestamps,
                   'mot_pos': mot_pos}
-    img_tomo, img_angle = get_tomo_images(input_dict)
+    img_tomo = np.array(list(c["primary"]["data"]["Andor_image"]))[0]
+    logger.info(img_tomo)
+    img_angle = get_image_angle(input_dict)
     img, cen = rotcen_test2(img_tomo, img_bkg_avg, img_dark_avg, img_angle)
     return img, cen
 
