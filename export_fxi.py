@@ -5,6 +5,7 @@ import numpy as np
 import os
 import prefect
 
+from pathlib import Path
 from prefect import task, Flow, Parameter
 
 
@@ -23,7 +24,7 @@ def run_export_fxi(uid):
         "delay_scan",
     }:
         export_scan(
-            uid, fpath="/nsls2/data/data/dssi/scratch/prefect-outputs/fxi"
+            uid, filepath="/nsls2/data/data/dssi/scratch/prefect-outputs/fxi"
         )
     else:
         raise RuntimeError("Only fly_scans can be exported currently")
@@ -65,7 +66,7 @@ def get_fly_scan_angle(run):
     return img_angle
 
 
-def export_scan(scan_id=-1, binning=4, fpath=''):
+def export_scan(scan_id=-1, binning=4, filepath=''):
     # raster_2d_2 scan calls export_raster_2D function even though export_raster_2D_2 function exists.
     # Legacy functions do not exist yet.
     tiled_client = databroker.from_profile("nsls2", username=None)["fxi"]
@@ -81,10 +82,10 @@ def export_scan(scan_id=-1, binning=4, fpath=''):
         raise RuntimeError(
             f"Export function {export_function} for scan type {scan_type} not found."
         )
-    globals()[export_function](run, binning=binning, fpath=fpath)
+    globals()[export_function](run, binning=binning, filepath=filepath)
 
 
-def export_tomo_scan(run, fpath='', **kwargs):
+def export_tomo_scan(run, filepath='', **kwargs):
 
     scan_type = "tomo_scan"
     scan_id = run.start["scan_id"]
@@ -107,9 +108,10 @@ def export_tomo_scan(run, fpath='', **kwargs):
     img_bkg_avg = np.median(img_bkg, axis=0, keepdims=True)
     img_angle = np.linspace(angle_i, angle_e, angle_n)
 
-    fname = os.path.join(os.path.abspath(fpath), f'{scan_type}_id_{scan_id}.h5')
+    filename = os.path.join(os.path.abspath(filepath), 
+                            f'{scan_type}_id_{scan_id}.h5')
 
-    with h5py.File(fname, "w") as hf:
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("scan_id", data=scan_id)
         hf.create_dataset("X_eng", data=x_eng)
         hf.create_dataset("img_bkg", data=img_bkg)
@@ -120,7 +122,7 @@ def export_tomo_scan(run, fpath='', **kwargs):
         hf.create_dataset("angle", data=img_angle)
 
 
-def export_fly_scan(run, fpath='', **kwargs):
+def export_fly_scan(run, filepath='', **kwargs):
     uid = run.start["uid"]
     note = run.start["note"]
     scan_type = "fly_scan"
@@ -145,9 +147,10 @@ def export_fly_scan(run, fpath='', **kwargs):
     img_dark_avg = np.median(img_dark, axis=0, keepdims=True)
     img_bkg_avg = np.median(img_bkg, axis=0, keepdims=True)
 
-    fname = fpath + scan_type + "_id_" + str(scan_id) + ".h5"
+    filename = os.path.join(os.path.abspath(filepath), 
+                            f'{scan_type}_id_{scan_id}.h5')
 
-    with h5py.File(fname, "w") as hf:
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("note", data=str(note))
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=int(scan_id))
@@ -171,7 +174,7 @@ def export_fly_scan(run, fpath='', **kwargs):
         hf.create_dataset("Pixel Size", data=str(str(pxl_sz) + "nm"))
 
 
-def export_fly_scan2(run, fpath='', **kwargs):
+def export_fly_scan2(run, filepath='', **kwargs):
     uid = run.start["uid"]
     note = run.start["note"]
     scan_type = "fly_scan2"
@@ -260,9 +263,10 @@ def export_fly_scan2(run, fpath='', **kwargs):
     # img_tomo = imgs[: pos2 - chunk_size]  # tomo images
     img_tomo = imgs[:pos2]
 
-    fname = fpath + scan_type + "_id_" + str(scan_id) + ".h5"
+    filename = os.path.join(os.path.abspath(filepath), 
+                            f'{scan_type}_id_{scan_id}.h5')
 
-    with h5py.File(fname, "w") as hf:
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("note", data=str(note))
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=int(scan_id))
@@ -286,7 +290,7 @@ def export_fly_scan2(run, fpath='', **kwargs):
         hf.create_dataset("Pixel Size", data=str(str(pxl_sz) + "nm"))
 
 
-def export_xanes_scan(run, fpath='', **kwargs):
+def export_xanes_scan(run, filepath='', **kwargs):
     zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
     DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -311,8 +315,10 @@ def export_xanes_scan(run, fpath='', **kwargs):
     )
     img_xanes_norm[np.isnan(img_xanes_norm)] = 0
     img_xanes_norm[np.isinf(img_xanes_norm)] = 0
-    fname = fpath + scan_type + "_id_" + str(scan_id) + ".h5"
-    with h5py.File(fname, "w") as hf:
+    
+    filename = os.path.join(os.path.abspath(filepath), 
+                            f'{scan_type}_id_{scan_id}.h5')
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=scan_id)
         hf.create_dataset("note", data=str(note))
@@ -330,23 +336,8 @@ def export_xanes_scan(run, fpath='', **kwargs):
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
-    try:
-        write_lakeshore_to_file(start, fname)
-    except Exception:
-        print("fails to write lakeshore info into {fname}")
 
-    del (
-        img_dark,
-        img_dark_avg,
-        img_bkg,
-        img_bkg_avg,
-        img_xanes,
-        img_xanes_avg,
-        img_xanes_norm,
-    )
-
-
-def export_xanes_scan_img_only(run, fpath='', **kwargs):
+def export_xanes_scan_img_only(run, filepath='', **kwargs):
     zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
     DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -369,8 +360,11 @@ def export_xanes_scan_img_only(run, fpath='', **kwargs):
     img_xanes_norm = (img_xanes_avg - img_dark_avg) * 1.0
     img_xanes_norm[np.isnan(img_xanes_norm)] = 0
     img_xanes_norm[np.isinf(img_xanes_norm)] = 0
-    fname = fpath + scan_type + "_id_" + str(scan_id) + "_img_only.h5"
-    with h5py.File(fname, "w") as hf:
+    
+    filename = os.path.join(os.path.abspath(filepath), 
+                            f'{scan_type}_id_{scan_id}_img_only.h5')
+
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=scan_id)
         hf.create_dataset("note", data=str(note))
@@ -389,7 +383,7 @@ def export_xanes_scan_img_only(run, fpath='', **kwargs):
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
 
-def export_z_scan(run, fpath='', **kwargs):
+def export_z_scan(run, filepath='', **kwargs):
     zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
     DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -414,10 +408,11 @@ def export_z_scan(run, fpath='', **kwargs):
     img_norm = (img_zscan - img_dark) / (img_bkg - img_dark)
     img_norm[np.isnan(img_norm)] = 0
     img_norm[np.isinf(img_norm)] = 0
-    #    fn = run.start['plan_args']['fn']
-    fname = fpath + scan_type + "_id_" + str(scan_id) + ".h5"
+    
+    filename = os.path.join(os.path.abspath(filepath), 
+                            f'{scan_type}_id_{scan_id}.h5')
 
-    with h5py.File(fname, "w") as hf:
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=scan_id)
         hf.create_dataset("note", data=str(note))
@@ -430,7 +425,7 @@ def export_z_scan(run, fpath='', **kwargs):
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
 
-def export_z_scan2(run, fpath='', **kwargs):
+def export_z_scan2(run, filepath='', **kwargs):
     zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
     DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -462,8 +457,10 @@ def export_z_scan2(run, fpath='', **kwargs):
     img_norm[np.isnan(img_norm)] = 0
     img_norm[np.isinf(img_norm)] = 0
 
-    fname = fpath + scan_type + "_id_" + str(scan_id) + ".h5"
-    with h5py.File(fname, "w") as hf:
+    filename = os.path.join(os.path.abspath(filepath), 
+                            f'{scan_type}_id_{scan_id}.h5')
+    
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=scan_id)
         hf.create_dataset("note", data=str(note))
@@ -482,7 +479,7 @@ def export_z_scan2(run, fpath='', **kwargs):
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
 
-def export_test_scan(run, fpath='', **kwargs):
+def export_test_scan(run, filepath='', **kwargs):
     zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
     DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -510,9 +507,11 @@ def export_test_scan(run, fpath='', **kwargs):
     img_norm = (img_test - img_dark) / (img_bkg - img_dark)
     img_norm[np.isnan(img_norm)] = 0
     img_norm[np.isinf(img_norm)] = 0
-    #    fn = run.start['plan_args']['fn']
-    fname = fpath + scan_type + "_id_" + str(scan_id) + ".h5"
-    with h5py.File(fname, "w") as hf:
+    
+    filename = os.path.join(os.path.abspath(filepath), 
+                            f'{scan_type}_id_{scan_id}.h5')
+    
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=scan_id)
         hf.create_dataset("X_eng", data=x_eng)
@@ -525,10 +524,9 @@ def export_test_scan(run, fpath='', **kwargs):
         )
         hf.create_dataset("Magnification", data=M)
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
-    #    tifffile.imsave(fname_tif, img_norm)
 
 
-def export_count(run, fpath='', **kwargs):
+def export_count(run, filepath='', **kwargs):
     """
     load images (e.g. RE(count([Andor], 10)) ) and save to .h5 file
     """
@@ -546,7 +544,7 @@ def export_count(run, fpath='', **kwargs):
     det = run.start["detectors"][0]
     img = get_img(start, det)
     scan_id = run.start["scan_id"]
-    fn = fpath + "count_id_" + str(scan_id) + ".h5"
+    fn = filepath + "count_id_" + str(scan_id) + ".h5"
     with h5py.File(fn, "w") as hf:
         hf.create_dataset("img", data=img.astype(np.float32))
         hf.create_dataset("uid", data=uid)
@@ -555,7 +553,7 @@ def export_count(run, fpath='', **kwargs):
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
 
-def export_delay_count(run, fpath='', **kwargs):
+def export_delay_count(run, filepath='', **kwargs):
     """
     load images (e.g. RE(count([Andor], 10)) ) and save to .h5 file
     """
@@ -572,7 +570,7 @@ def export_delay_count(run, fpath='', **kwargs):
     uid = run.start["uid"]
     det = run.start["detectors"][0]
     img = get_img(start, det)
-    fn = fpath + "count_id_" + str(scan_id) + ".h5"
+    fn = filepath + "count_id_" + str(scan_id) + ".h5"
     with h5py.File(fn, "w") as hf:
         hf.create_dataset("img", data=img.astype(np.float32))
         hf.create_dataset("uid", data=uid)
@@ -581,7 +579,7 @@ def export_delay_count(run, fpath='', **kwargs):
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
 
-def export_delay_scan(run, fpath='', **kwargs):
+def export_delay_scan(run, filepath='', **kwargs):
     det = run.start["detectors"][0]
     scan_type = run.start["plan_name"]
     scan_id = run.start["scan_id"]
@@ -602,8 +600,11 @@ def export_delay_scan(run, fpath='', **kwargs):
     pxl_sz = 6500.0 / M
     if det == "detA1" or det == "Andor":
         img = get_img(start, det)
-        fname = fpath + scan_type + "_id_" + str(scan_id) + ".h5"
-        with h5py.File(fname, "w") as hf:
+        
+        filename = os.path.join(os.path.abspath(filepath), 
+                                f'{scan_type}_id_{scan_id}.h5')
+        
+        with h5py.File(filename, "w") as hf:
             hf.create_dataset("img", data=np.array(img, dtype=np.float32))
             hf.create_dataset("uid", data=uid)
             hf.create_dataset("scan_id", data=scan_id)
@@ -619,7 +620,7 @@ def export_delay_scan(run, fpath='', **kwargs):
         print("no image stored in this scan")
 
 
-def export_multipos_count(run, fpath='', **kwargs):
+def export_multipos_count(run, filepath='', **kwargs):
     scan_type = run.start["plan_name"]
     scan_id = run.start["scan_id"]
     uid = run.start["uid"]
@@ -653,9 +654,11 @@ def export_multipos_count(run, fpath='', **kwargs):
             img_group[i, j] = (tmp_img - img_dark_avg) / (
                 tmp_bkg - img_dark_avg
             )
-    # fn = os.getcwd() + "/"
-    fname = fpath + scan_type + "_id_" + str(scan_id) + ".h5"
-    with h5py.File(fname, "w") as hf:
+    
+    filename = os.path.join(os.path.abspath(filepath), 
+                            f'{scan_type}_id_{scan_id}.h5')
+    
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=scan_id)
         hf.create_dataset("note", data=str(note))
@@ -665,29 +668,27 @@ def export_multipos_count(run, fpath='', **kwargs):
             hf.create_dataset(f"img_pos{i+1}", data=np.squeeze(img_group[i]))
 
 
-def export_grid2D_rel(run, fpath='', **kwargs):
+def export_grid2D_rel(run, filepath='', **kwargs):
     scan_type = "grid2D_rel"
     scan_id = run.start["scan_id"]
     num1 = run.start["plan_args"]["num1"]
     num2 = run.start["plan_args"]["num2"]
     img = np.squeeze(np.array(list(run["primary"]["data"]["Andor_image"])))
 
-    fname = scan_type + "_id_" + str(scan_id)
-    # cwd = os.getcwd()
-    cwd = fpath
-    try:
-        os.mkdir(cwd + f"{fname}")
-    except Exception:
-        print(cwd + f"{name} existed")
-    fout = cwd + f"{fname}"
+    folder_name = os.path.join(os.path.abspath(filepath), 
+                                f'{scan_type}_id_{scan_id}')
+    
+    # Make the folder.
+    Path(folder_name).mkdir(parents=True, exist_ok=True)
+
     for i in range(num1):
         for j in range(num2):
-            fname_tif = fout + f"_({ij}).tif"
+            filename = os.path.join(folder_name, f"_({ij}).tif")
             img = Image.fromarray(img[i * num1 + j])
-            img.save(fname_tif)
+            img.save(filename)
 
 
-def export_raster_2D_2(run, binning=4, fpath='', **kwargs):
+def export_raster_2D_2(run, binning=4, filepath='', **kwargs):
     from skimage import io
 
     num_dark = 5
@@ -750,8 +751,8 @@ def export_raster_2D_2(run, binning=4, fpath='', **kwargs):
     img_patch_bin = bin_ndarray(
         img_patch, new_shape=(1, int(s[1] / binning), int(s[2] / binning))
     )
-    fout_tiff = fpath + f"raster2D_scan_{scan_id}_binning_{binning}.tiff"
-    fout_txt = fpath + f"raster2D_scan_{scan_id}_cord.txt"
+    fout_tiff = filepath + f"raster2D_scan_{scan_id}_binning_{binning}.tiff"
+    fout_txt = filepath + f"raster2D_scan_{scan_id}_cord.txt"
     print(f"{pos_file_for_print}")
     io.imsave(fout_tiff, np.array(img_patch_bin[0], dtype=np.float32))
     with open(f"{fout_txt}", "w+") as f:
@@ -760,7 +761,7 @@ def export_raster_2D_2(run, binning=4, fpath='', **kwargs):
     num_img = int(x_num) * int(y_num)
     # cwd = os.getcwd()
     # new_dir = f"{cwd}/raster_scan_{scan_id}"
-    new_dir = fpath + f"raster_scan_{scan_id}"
+    new_dir = filepath + f"raster_scan_{scan_id}"
     if not os.path.exists(new_dir):
         os.mkdir(new_dir)
     """
@@ -784,7 +785,7 @@ def export_raster_2D_2(run, binning=4, fpath='', **kwargs):
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
 
-def export_raster_2D(run, binning=4, fpath='', **kwargs):
+def export_raster_2D(run, binning=4, filepath='', **kwargs):
     import tifffile
 
     scan_id = run.start["scan_id"]
@@ -837,15 +838,15 @@ def export_raster_2D(run, binning=4, fpath='', **kwargs):
     img_patch_bin = bin_ndarray(
         img_patch, new_shape=(1, int(s[1] / binning), int(s[2] / binning))
     )
-    fout_tiff = fpath + f"raster2D_scan_{scan_id}_binning_{binning}.tiff"
-    fout_txt = fpath + f"raster2D_scan_{scan_id}_cord.txt"
+    fout_tiff = filepath + f"raster2D_scan_{scan_id}_binning_{binning}.tiff"
+    fout_txt = filepath + f"raster2D_scan_{scan_id}_cord.txt"
     print(f"{pos_file_for_print}")
     with open(f"{fout_txt}", "w+") as f:
         f.writelines(pos_file)
     tifffile.imsave(fout_tiff, np.array(img_patch_bin, dtype=np.float32))
     # cwd = os.getcwd()
     # new_dir = f"{cwd}/raster_scan_{scan_id}"
-    new_dir = fpath + f"raster_scan_{scan_id}"
+    new_dir = filepath + f"raster_scan_{scan_id}"
     if not os.path.exists(new_dir):
         os.mkdir(new_dir)
     """
@@ -869,7 +870,7 @@ def export_raster_2D(run, binning=4, fpath='', **kwargs):
         hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
 
-def export_multipos_2D_xanes_scan2(run, fpath='', **kwargs):
+def export_multipos_2D_xanes_scan2(run, filepath='', **kwargs):
     scan_type = run.start["plan_name"]
     uid = run.start["uid"]
     note = run.start["note"]
@@ -900,15 +901,13 @@ def export_multipos_2D_xanes_scan2(run, fpath='', **kwargs):
         id_e = int((repeat + 1) * num_eng)
         img_x = img_xanes[id_s * num_pos: id_e * num_pos]  # xanes image
         img_b = img_bkg[id_s:id_e]  # bkg image
-        # save data
-        # fn = os.getcwd() + "/"
-        fn = fpath
         for j in range(num_pos):
             img_p = img_x[j::num_pos]
             img_p_n = (img_p - img_dark) / (img_b - img_dark)
-            fname = f"{fn}{scan_type}_id_{scan_id}_repeat_{repeat:02d}_pos_{j:02d}.h5"
-            print(f"saving {fname}")
-            with h5py.File(fname, "w") as hf:
+            name = f"{scan_type}_id_{scan_id}_repeat_{repeat:02d}_pos_{j:02d}.h5"
+            filename = os.path.join(os.path.abspath(filepath), name)
+            
+            with h5py.File(filename, "w") as hf:
                 hf.create_dataset("uid", data=uid)
                 hf.create_dataset("scan_id", data=scan_id)
                 hf.create_dataset("note", data=str(note))
@@ -927,7 +926,7 @@ def export_multipos_2D_xanes_scan2(run, fpath='', **kwargs):
                 hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
 
-def export_multipos_2D_xanes_scan3(run, fpath='', **kwargs):
+def export_multipos_2D_xanes_scan3(run, filepath='', **kwargs):
     zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
     DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
     M = (DetU_z_pos / zp_z_pos - 1) * 10.0
@@ -937,10 +936,8 @@ def export_multipos_2D_xanes_scan3(run, fpath='', **kwargs):
     note = run.start["note"]
     scan_id = run.start["scan_id"]
     scan_time = run.start["time"]
-    #    x_eng = run.start['x_ray_energy']
     num_eng = run.start["num_eng"]
     num_pos = run.start["num_pos"]
-    #    repeat_num = run.start['plan_args']['repeat_num']
     imgs = np.array(list(run["primary"]["data"]["Andor_image"]))
     imgs = np.mean(imgs, axis=1)
     img_dark = imgs[0]
@@ -962,12 +959,11 @@ def export_multipos_2D_xanes_scan3(run, fpath='', **kwargs):
             img_xanes[j, i] = (img_xanes[j, i] - img_dark) / (
                 img_bkg[i] - img_dark
             )
-    # save data
-    # fn = os.getcwd() + "/"
-    fn = fpath
     for j in range(num_pos):
-        fname = f"{fn}{scan_type}_id_{scan_id}_pos_{j}.h5"
-        with h5py.File(fname, "w") as hf:
+        filename = os.path.join(os.path.abspath(filepath), 
+                                f'{scan_type}_id_{scan_id}_pos_{j}.h5')
+        
+        with h5py.File(filename, "w") as hf:
             hf.create_dataset("uid", data=uid)
             hf.create_dataset("scan_id", data=scan_id)
             hf.create_dataset("note", data=str(note))
@@ -986,7 +982,7 @@ def export_multipos_2D_xanes_scan3(run, fpath='', **kwargs):
             hf.create_dataset("Pixel Size", data=str(pxl_sz) + "nm")
 
 
-def export_user_fly_only(run, fpath='', **kwargs):
+def export_user_fly_only(run, filepath='', **kwargs):
     uid = run.start["uid"]
     note = run.start["note"]
     scan_id = run.start["scan_id"]
@@ -1074,9 +1070,10 @@ def export_user_fly_only(run, fpath='', **kwargs):
     img_angle = mot_pos_interp[: pos2 - chunk_size]  # rotation angles
     img_tomo = imgs[: pos2 - chunk_size]  # tomo images
 
-    fname = fpath + "fly_scan_id_" + str(scan_id) + ".h5"
+    filename = os.path.join(os.path.abspath(filepath), 
+                            f'fly_scan_id_{scan_id}.h5')
 
-    with h5py.File(fname, "w") as hf:
+    with h5py.File(filename, "w") as hf:
         hf.create_dataset("note", data=str(note))
         hf.create_dataset("uid", data=uid)
         hf.create_dataset("scan_id", data=int(scan_id))
@@ -1099,17 +1096,17 @@ def export_user_fly_only(run, fpath='', **kwargs):
 
 
 def export_scan_change_expo_time(
-    run, fpath='', save_range_x=[], save_range_y=[], **kwargs
+    run, filepath='', save_range_x=[], save_range_y=[], **kwargs
 ):
     from skimage import io
 
     scan_id = run.start["scan_id"]
-    fpath += f"scan_{scan_id}/"
-    fpath_t1 = fpath + "t1/"
-    fpath_t2 = fpath + "t2/"
-    os.makedirs(fpath, exist_ok=True, mode=0o777)
-    os.makedirs(fpath_t1, exist_ok=True, mode=0o777)
-    os.makedirs(fpath_t2, exist_ok=True, mode=0o777)
+    filepath += f"scan_{scan_id}/"
+    filepath_t1 = filepath + "t1/"
+    filepath_t2 = filepath + "t2/"
+    os.makedirs(filepath, exist_ok=True, mode=0o777)
+    os.makedirs(filepath_t1, exist_ok=True, mode=0o777)
+    os.makedirs(filepath_t2, exist_ok=True, mode=0o777)
 
     zp_z_pos = run["baseline"]["data"]["zp_z"][1].item()
     DetU_z_pos = run["baseline"]["data"]["DetU_z"][1].item()
@@ -1169,8 +1166,8 @@ def export_scan_change_expo_time(
             img_t1_n = (img_t1 - img_dark_t1) / (img_bkg_t1 - img_dark_t1)
             img_t2_n = (img_t2 - img_dark_t2) / (img_bkg_t2 - img_dark_t2)
 
-            fsave_t1 = fpath_t1 + f"img_t1_{idx:05d}.tiff"
-            fsave_t2 = fpath_t2 + f"img_t2_{idx:05d}.tiff"
+            fsave_t1 = filepath_t1 + f"img_t1_{idx:05d}.tiff"
+            fsave_t2 = filepath_t2 + f"img_t2_{idx:05d}.tiff"
 
             im1 = img_t1_n[
                 0,
@@ -1184,7 +1181,7 @@ def export_scan_change_expo_time(
             ]
             io.imsave(fsave_t1, im1.astype(np.float32))
             io.imsave(fsave_t2, im2.astype(np.float32))
-    with h5py.File(fpath, "w") as hf:
+    with h5py.File(filepath, "w") as hf:
         hf.create_dataset("scan_id", data=scan_id)
         hf.create_dataset("scan_type", data=scan_type)
         hf.create_dataset("uid", data=uid)

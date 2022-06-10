@@ -20,15 +20,15 @@ def get_fly_scan_angle(input_dict):
     
     timestamp_mot = timestamp_to_float(pos["time"])
 
-    img_ini_timestamp = timestamp_tomo[0]
+    img_ini_timestamp = timestamp_tomo[0][0]
     mot_ini_timestamp = timestamp_mot[
         1
     ]  # timestamp_mot[1] is the time when taking dark image
 
-    tomo_time = timestamp_tomo - img_ini_timestamp
+    print(f'timestamp_tomo: {timestamp_tomo} img_ini_timestamp: {img_ini_timestamp}')
+    tomo_time = timestamp_tomo[0] - img_ini_timestamp
     mot_time = timestamp_mot - mot_ini_timestamp
 
-    mot_pos = np.array(pos["zps_pi_r"])
     mot_pos_interp = np.interp(tomo_time, mot_time, mot_pos)
 
     img_angle = mot_pos_interp
