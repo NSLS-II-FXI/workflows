@@ -13,9 +13,9 @@ with Flow("end-of-run-workflow") as flow:
     stop_doc = Parameter("stop_doc")
     uid = stop_doc["run_start"]
     validation_flow = create_flow_run(
-        flow_name="fxi-data-validation",
+        flow_name="general-data-validation",
         project_name="FXI",
-        parameters={"uid": uid}
+        parameters={"beamline_acronym": "fxi" ,"uid": uid}
     )
     export_flow = create_flow_run(
         flow_name="export",
