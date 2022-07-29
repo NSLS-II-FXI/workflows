@@ -53,7 +53,6 @@ def call_find_rot(uid):
     imgs = np.array(list(scan_result["primary"]["data"]["Andor_image"]))
 
     s1 = imgs.shape
-    chunk_size = s1[1]
     imgs = imgs.reshape(-1, s1[2], s1[3])
     logger.info("done with primary images")
 
