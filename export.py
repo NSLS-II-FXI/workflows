@@ -727,7 +727,8 @@ def export_raster_2D_2(run, binning=4, filepath="", **kwargs):
                 y_list[j] * pix * img_sizeY / 1000,
             ]
             pos_file.append(
-                f"{x_list[i]:3.0f}\t{y_list[j]:3.0f}\t{x_list[i]*pix*img_sizeX/1000:3.3f}\t\t{y_list[j]*pix*img_sizeY/1000:3.3f}\n"
+                f"{x_list[i]:3.0f}\t{y_list[j]:3.0f}\t{x_list[i]*pix*img_sizeX/1000:3.3f}\t\t"
+                + f"{y_list[j]*pix*img_sizeY/1000:3.3f}\n"
             )
             index = index + 1
     s = img_patch.shape
@@ -804,7 +805,8 @@ def export_raster_2D(run, binning=4, filepath="", **kwargs):
                 y_list[j] * pix * img_sizeY / 1000,
             ]
             pos_file.append(
-                f"{x_list[i]:3.0f}\t{y_list[j]:3.0f}\t{x_list[i]*pix*img_sizeX/1000:3.3f}\t\t{y_list[j]*pix*img_sizeY/1000:3.3f}\n"
+                f"{x_list[i]:3.0f}\t{y_list[j]:3.0f}\t{x_list[i]*pix*img_sizeX/1000:3.3f}\t\t"
+                + f"{y_list[j]*pix*img_sizeY/1000:3.3f}\n"
             )
             index = index + 1
     s = img_patch.shape
