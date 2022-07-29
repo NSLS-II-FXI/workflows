@@ -92,12 +92,12 @@ def bin_ndarray(ndarray, new_shape=None, operation="mean"):
      [262 270 278 286 294]
      [342 350 358 366 374]]
     """
-    if new_shape == None:
+    if new_shape is None:
         s = np.array(ndarray.shape)
         s1 = np.int32(s / 2)
         new_shape = tuple(s1)
     operation = operation.lower()
-    if not operation in ["sum", "mean"]:
+    if operation not in ["sum", "mean"]:
         raise ValueError("Operation not supported.")
     if ndarray.ndim != len(new_shape):
         raise ValueError("Shape mismatch: {} -> {}".format(ndarray.shape, new_shape))

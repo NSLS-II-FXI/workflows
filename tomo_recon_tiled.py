@@ -34,7 +34,7 @@ def rotcen_test2(
 ):
     s = [1, data.shape[0], data.shape[1]]
 
-    if not atten is None:
+    if atten is not None:
         ref_ang = atten[:, 0]
         ref_atten = atten[:, 1]
         fint = interp1d(ref_ang, ref_atten)
@@ -60,7 +60,7 @@ def rotcen_test2(
         img_bkg = np.array(img_bkg_avg[:, sli_exp[0] : sli_exp[1], :])
         img_dark = np.array(img_dark_avg[:, sli_exp[0] : sli_exp[1], :]) / dark_scale
         prj = (img_tomo - img_dark) / (img_bkg - img_dark)
-        if not atten is None:
+        if atten is not None:
             for i in range(len(tomo_angle)):
                 att = fint(tomo_angle[i])
                 prj[i] = prj[i] / att
@@ -100,7 +100,7 @@ def rotcen_test2(
         allow_list = list(set(np.arange(len(prj_norm))) - set(block_list))
         prj_norm = prj_norm[allow_list]
         theta = theta[allow_list]
-    if start == None or stop == None or steps == None:
+    if start is None or stop is None or steps is None:
         start = int(s[2] / 2 - 50)
         stop = int(s[2] / 2 + 50)
         steps = 26
