@@ -102,7 +102,7 @@ def bin_ndarray(ndarray, new_shape=None, operation="mean"):
     if ndarray.ndim != len(new_shape):
         raise ValueError("Shape mismatch: {} -> {}".format(ndarray.shape, new_shape))
     compression_pairs = [(d, c // d) for d, c in zip(new_shape, ndarray.shape)]
-    flattened = [l for p in compression_pairs for l in p]
+    flattened = [ell for p in compression_pairs for ell in p]
     ndarray = ndarray.reshape(flattened)
     for i in range(len(new_shape)):
         op = getattr(ndarray, operation)
