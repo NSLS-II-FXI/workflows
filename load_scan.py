@@ -2,7 +2,6 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
-from databroker.assets.handlers import AreaDetectorHDF5TimestampHandler
 
 EPICS_EPOCH = datetime(1990, 1, 1, 0, 0)
 
