@@ -1,14 +1,14 @@
-import databroker
 import datetime
+import os
+from pathlib import Path
+
+import databroker
 import h5py
 import numpy as np
-import os
 import pandas as pd
 import prefect
-
-from pathlib import Path
 from PIL import Image
-from prefect import task, Flow, Parameter
+from prefect import Flow, Parameter, task
 
 
 @task
@@ -69,9 +69,9 @@ def get_img(run, det="Andor", sli=[]):
     "Take in a Header and return a numpy array of detA1 image(s)."
     det_name = f"{det}_image"
     if len(sli) == 2:
-        img = np.array(list(run['primary']['data'][det_name])[sli[0] : sli[1]])
+        img = np.array(list(run["primary"]["data"][det_name])[sli[0] : sli[1]])
     else:
-        img = np.array(list(run['primary']['data'][det_name]))
+        img = np.array(list(run["primary"]["data"][det_name]))
     return np.squeeze(img)
 
 
