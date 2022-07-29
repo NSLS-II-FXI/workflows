@@ -1,14 +1,14 @@
-import databroker
 import datetime
+import os
+from pathlib import Path
+
+import databroker
 import h5py
 import numpy as np
-import os
 import pandas as pd
 import prefect
-
-from pathlib import Path
 from PIL import Image
-from prefect import task, Flow, Parameter
+from prefect import Flow, Parameter, task
 
 
 @task
@@ -69,9 +69,9 @@ def get_img(run, det="Andor", sli=[]):
     "Take in a Header and return a numpy array of detA1 image(s)."
     det_name = f"{det}_image"
     if len(sli) == 2:
-        img = np.array(list(run['primary']['data'][det_name])[sli[0] : sli[1]])
+        img = np.array(list(run["primary"]["data"][det_name])[sli[0] : sli[1]])
     else:
-        img = np.array(list(run['primary']['data'][det_name]))
+        img = np.array(list(run["primary"]["data"][det_name]))
     return np.squeeze(img)
 
 
@@ -92,17 +92,17 @@ def bin_ndarray(ndarray, new_shape=None, operation="mean"):
      [262 270 278 286 294]
      [342 350 358 366 374]]
     """
-    if new_shape == None:
+    if new_shape is None:
         s = np.array(ndarray.shape)
         s1 = np.int32(s / 2)
         new_shape = tuple(s1)
     operation = operation.lower()
-    if not operation in ["sum", "mean"]:
+    if operation not in ["sum", "mean"]:
         raise ValueError("Operation not supported.")
     if ndarray.ndim != len(new_shape):
         raise ValueError("Shape mismatch: {} -> {}".format(ndarray.shape, new_shape))
     compression_pairs = [(d, c // d) for d, c in zip(new_shape, ndarray.shape)]
-    flattened = [l for p in compression_pairs for l in p]
+    flattened = [ell for p in compression_pairs for ell in p]
     ndarray = ndarray.reshape(flattened)
     for i in range(len(new_shape)):
         op = getattr(ndarray, operation)
@@ -727,7 +727,8 @@ def export_raster_2D_2(run, binning=4, filepath="", **kwargs):
                 y_list[j] * pix * img_sizeY / 1000,
             ]
             pos_file.append(
-                f"{x_list[i]:3.0f}\t{y_list[j]:3.0f}\t{x_list[i]*pix*img_sizeX/1000:3.3f}\t\t{y_list[j]*pix*img_sizeY/1000:3.3f}\n"
+                f"{x_list[i]:3.0f}\t{y_list[j]:3.0f}\t{x_list[i]*pix*img_sizeX/1000:3.3f}\t\t"
+                + f"{y_list[j]*pix*img_sizeY/1000:3.3f}\n"
             )
             index = index + 1
     s = img_patch.shape
@@ -804,7 +805,8 @@ def export_raster_2D(run, binning=4, filepath="", **kwargs):
                 y_list[j] * pix * img_sizeY / 1000,
             ]
             pos_file.append(
-                f"{x_list[i]:3.0f}\t{y_list[j]:3.0f}\t{x_list[i]*pix*img_sizeX/1000:3.3f}\t\t{y_list[j]*pix*img_sizeY/1000:3.3f}\n"
+                f"{x_list[i]:3.0f}\t{y_list[j]:3.0f}\t{x_list[i]*pix*img_sizeX/1000:3.3f}\t\t"
+                + f"{y_list[j]*pix*img_sizeY/1000:3.3f}\n"
             )
             index = index + 1
     s = img_patch.shape
