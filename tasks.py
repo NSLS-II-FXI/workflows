@@ -120,7 +120,7 @@ def rotcen_test2(
     filter_name="None",
 ):
     print("beginning of rotcen2")
-    s = [1, data.shape[0], data.shape[1]]
+    s = [1, img_tomo.shape[0], img_tomo.shape[1]]
 
     if atten is not None:
         ref_ang = atten[:, 0]
