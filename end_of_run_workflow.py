@@ -15,7 +15,7 @@ with Flow("end-of-run-workflow") as flow:
     validation_flow = create_flow_run(
         flow_name="general-data-validation",
         project_name="FXI",
-        parameters={"beamline_acronym": "fxi" ,"uid": uid}
+        parameters={"beamline_acronym": "fxi", "uid": uid}
     )
     export_flow = create_flow_run(
         flow_name="export",
