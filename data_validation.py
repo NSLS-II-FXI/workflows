@@ -20,7 +20,7 @@ def read_all_streams(uid, beamline_acronym):
     elapsed_time = ttime.monotonic() - start_time
     logger.info(f"{elapsed_time = }")
 
+
 @flow
 def general_data_validation(uid):
     read_all_streams(uid, beamline_acronym="fxi")
-

@@ -4,26 +4,25 @@ import h5py
 import numpy as np
 import os
 import pandas as pd
-import prefect
 
 from pathlib import Path
 from PIL import Image
-from prefect import task, Flow, Parameter
+from prefect import task, flow, get_run_logger
 
 
 @task
 def run_export_fxi(uid):
-    tiled_client = databroker.from_profile("nsls2", username=None)["fxi"]
+    tiled_client = databroker.from_profile("nsls2", username=None)["fxi"]["raw"]
     scan_id = tiled_client[uid].start["scan_id"]
     scan_type = tiled_client[uid].start["plan_name"]
-    logger = prefect.context.get("logger")
+    logger = get_run_logger()
     logger.info(f"Scan ID: {scan_id}")
     logger.info(f"Scan Type: {scan_type}")
     export_scan(uid, filepath="/nsls2/data/data/dssi/scratch/prefect-outputs/fxi")
 
 
-with Flow("export") as flow:
-    uid = Parameter("uid")
+@flow
+def export(uid):
     run_export_fxi(uid)
 
 
@@ -69,9 +68,9 @@ def get_img(run, det="Andor", sli=[]):
     "Take in a Header and return a numpy array of detA1 image(s)."
     det_name = f"{det}_image"
     if len(sli) == 2:
-        img = np.array(list(run['primary']['data'][det_name])[sli[0] : sli[1]])
+        img = np.array(list(run["primary"]["data"][det_name])[sli[0] : sli[1]])
     else:
-        img = np.array(list(run['primary']['data'][det_name]))
+        img = np.array(list(run["primary"]["data"][det_name]))
     return np.squeeze(img)
 
 
@@ -128,7 +127,6 @@ def export_scan(scan_id=-1, binning=4, filepath=""):
 
 
 def export_tomo_scan(run, filepath="", **kwargs):
-
     scan_type = "tomo_scan"
     scan_id = run.start["scan_id"]
     try:
