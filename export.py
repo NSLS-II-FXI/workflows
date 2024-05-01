@@ -12,7 +12,7 @@ from prefect import task, flow, get_run_logger
 
 @task
 def run_export_fxi(uid):
-    tiled_client = databroker.from_profile("nsls2", username=None)["fxi"]["raw"]
+    tiled_client = databroker.from_profile("nsls2")["fxi"]["raw"]
     scan_id = tiled_client[uid].start["scan_id"]
     scan_type = tiled_client[uid].start["plan_name"]
     logger = get_run_logger()
